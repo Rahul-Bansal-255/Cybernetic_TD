@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CYBER DEFENSE: AEGIS PROTOCOL | Sci-Fi Tower Defense</title>
+    <meta name="description" content="Cyberpunk Sci-Fi Tower Defense Web Game featuring dynamic tactical towers, commander superweapons, 3 unique sectors, and synth audio." />
+    <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+    
+    <!-- Modern Futuristic Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Orbitron:wght@500;700;900&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app" class="game-container">
+      
+      <!-- Top HUD Header -->
+      <header class="hud-top">
+        <div class="hud-brand">
+          <img src="/logo.jpg" alt="Aegis Core" class="hud-logo" />
+          <div class="hud-title-wrap">
+            <h1 class="hud-title">AEGIS PROTOCOL</h1>
+            <span class="hud-sector-tag" id="current-sector-name">SECTOR ALPHA</span>
+          </div>
+        </div>
+
+        <!-- Resources & Status Metrics -->
+        <div class="hud-stats-cluster">
+          <div class="stat-pill credits-pill" title="Credits: Used to build & upgrade towers">
+            <span class="stat-icon">⚡</span>
+            <div class="stat-content">
+              <span class="stat-label">CREDITS</span>
+              <span class="stat-val" id="hud-credits">450</span>
+            </div>
+          </div>
+
+          <div class="stat-pill lives-pill" title="Core Integrity (Lives remaining)">
+            <span class="stat-icon heart-pulse">🛡️</span>
+            <div class="stat-content">
+              <span class="stat-label">CORE INTEGRITY</span>
+              <span class="stat-val" id="hud-lives">20 / 20</span>
+            </div>
+            <div class="hp-bar-micro">
+              <div class="hp-fill" id="hud-hp-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+
+          <div class="stat-pill wave-pill" title="Current Wave Progress">
+            <span class="stat-icon">📡</span>
+            <div class="stat-content">
+              <span class="stat-label">WAVE</span>
+              <span class="stat-val" id="hud-wave">1 / 25</span>
+            </div>
+          </div>
+
+          <div class="stat-pill score-pill" title="Defense Score">
+            <span class="stat-icon">🏆</span>
+            <div class="stat-content">
+              <span class="stat-label">SCORE</span>
+              <span class="stat-val" id="hud-score">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls: Speed, Audio, Codex, Maps -->
+        <div class="hud-controls-cluster">
+          <!-- Game Speed buttons -->
+          <div class="speed-toggle-group">
+            <button class="speed-btn active" data-speed="1" id="speed-1x" title="Normal Speed (1x)">1x</button>
+            <button class="speed-btn" data-speed="2" id="speed-2x" title="Fast Speed (2x)">2x</button>
+            <button class="speed-btn" data-speed="4" id="speed-4x" title="Hyper Speed (4x)">4x</button>
+            <button class="speed-btn pause-btn" id="btn-pause" title="Pause / Resume Game (Space)">⏸</button>
+          </div>
+
+          <!-- Audio & Options -->
+          <div class="utility-btns">
+            <button class="icon-btn" id="btn-sound-toggle" title="Toggle Sound SFX">🔊</button>
+            <button class="icon-btn" id="btn-bgm-toggle" title="Toggle Synthwave Music">🎵</button>
+            <button class="icon-btn" id="btn-open-codex" title="Tactical Database / Guide">📖</button>
+            <button class="icon-btn" id="btn-open-maps" title="Select Sector / Map">🗺️</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Game Arena Area -->
+      <main class="game-arena-wrapper">
+        
+        <!-- Canvas Stage with Overlay elements -->
+        <div class="canvas-viewport" id="canvas-viewport">
+          <canvas id="game-canvas"></canvas>
+          
+          <!-- Crosshair / Placement Warning Notice -->
+          <div class="placement-banner" id="placement-banner" style="display: none;">
+            <span id="placement-text">Click an empty grid tile to deploy tower. Press ESC to cancel.</span>
+          </div>
+
+          <!-- Wave Countdown / Boss Alert Banner -->
+          <div class="wave-announcement" id="wave-announcement">
+            <span class="wave-announcement-subtitle">DEFENSE ALERT</span>
+            <span class="wave-announcement-title">HOSTILE WAVE INCOMING</span>
+          </div>
+
+          <!-- Boss HP bar overlay (only visible during boss waves) -->
+          <div class="boss-health-bar" id="boss-health-bar" style="display: none;">
+            <div class="boss-info">
+              <span class="boss-icon">⚠️</span>
+              <span class="boss-title" id="boss-title">TITAN SIEGE MECH</span>
+              <span class="boss-hp-numbers" id="boss-hp-numbers">12,000 / 12,000</span>
+            </div>
+            <div class="boss-hp-track">
+              <div class="boss-hp-fill" id="boss-hp-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side: Tactical Inspector & Abilities & Wave Intel -->
+        <aside class="tactical-sidebar">
+          
+          <!-- Upcoming Wave Intel Banner -->
+          <div class="intel-card">
+            <div class="card-header">
+              <span class="card-title">TACTICAL RADAR</span>
+              <span class="badge" id="wave-status-badge">STANDBY</span>
+            </div>
+            <div class="wave-preview-content" id="wave-preview-box">
+              <div class="wave-preview-intel" id="wave-preview-intel">
+                Scout Drones incoming. Light kinetic resistance.
+              </div>
+              <div class="wave-enemy-chips" id="wave-enemy-chips">
+                <!-- Injected dynamically -->
+              </div>
+            </div>
+            <button class="btn-primary call-wave-btn" id="btn-call-wave">
+              <span>CALL WAVE EARLY</span>
+              <span class="bonus-tag" id="wave-bonus-tag">+25 ⚡ BONUS</span>
+            </button>
+          </div>
+
+          <!-- Commander Superweapons Deck -->
+          <div class="commander-powers-card">
+            <div class="card-header">
+              <span class="card-title">SUPERWEAPONS</span>
+              <span class="key-hint">HOTKEYS Q, W, E</span>
+            </div>
+            <div class="powers-grid">
+              
+              <button class="power-btn" id="power-orbital" title="Orbital Bombardment (Q): Call devastating kinetic particle strike on target area">
+                <div class="power-icon-wrap">
+                  <span class="power-icon">🛰️</span>
+                  <div class="cooldown-overlay" id="cd-orbital"></div>
+                </div>
+                <div class="power-info">
+                  <span class="power-name">ORBITAL BEAM</span>
+                  <span class="power-cost">[Q] 45s CD</span>
+                </div>
+              </button>
+
+              <button class="power-btn" id="power-stasis" title="Cryo Stasis (W): Freezes all active hostiles in deep stasis for 4.5s">
+                <div class="power-icon-wrap">
+                  <span class="power-icon">❄️</span>
+                  <div class="cooldown-overlay" id="cd-stasis"></div>
+                </div>
+                <div class="power-info">
+                  <span class="power-name">CRYO STASIS</span>
+                  <span class="power-cost">[W] 50s CD</span>
+                </div>
+              </button>
+
+              <button class="power-btn" id="power-overdrive" title="Overdrive Surge (E): Grants +100% attack speed to all towers for 6s">
+                <div class="power-icon-wrap">
+                  <span class="power-icon">⚡</span>
+                  <div class="cooldown-overlay" id="cd-overdrive"></div>
+                </div>
+                <div class="power-info">
+                  <span class="power-name">OVERDRIVE</span>
+                  <span class="power-cost">[E] 40s CD</span>
+                </div>
+              </button>
+
+            </div>
+          </div>
+
+          <!-- Selected Tower Inspection & Management Panel -->
+          <div class="inspector-card" id="tower-inspector-card">
+            <div class="card-header">
+              <span class="card-title" id="inspector-tower-name">TOWER INSPECTOR</span>
+              <span class="badge" id="inspector-tower-tier">TIER 1</span>
+            </div>
+            <div id="inspector-empty-msg" class="empty-state-text">
+              Select a deployed tower on the battlefield to inspect combat telemetry, modify targeting priority, upgrade weapons, or recycle for credits.
+            </div>
+            <div id="inspector-active-content" style="display: none;">
+              <div class="tower-stats-grid">
+                <div class="stat-mini">
+                  <span class="s-label">DAMAGE</span>
+                  <span class="s-val" id="insp-damage">--</span>
+                </div>
+                <div class="stat-mini">
+                  <span class="s-label">FIRE RATE</span>
+                  <span class="s-val" id="insp-rate">--</span>
+                </div>
+                <div class="stat-mini">
+                  <span class="s-label">RANGE</span>
+                  <span class="s-val" id="insp-range">--</span>
+                </div>
+                <div class="stat-mini">
+                  <span class="s-label">DPS</span>
+                  <span class="s-val" id="insp-dps">--</span>
+                </div>
+                <div class="stat-mini full-width">
+                  <span class="s-label">CONFIRMED KILLS</span>
+                  <span class="s-val highlight" id="insp-kills">0</span>
+                </div>
+                <div class="stat-mini full-width">
+                  <span class="s-label">TOTAL DAMAGE DEALT</span>
+                  <span class="s-val highlight" id="insp-total-dmg">0</span>
+                </div>
+              </div>
+
+              <!-- Targeting Priority Selector -->
+              <div class="targeting-selector-row">
+                <label for="tower-target-select">PRIORITY:</label>
+                <select id="tower-target-select" class="cyber-select">
+                  <option value="first">FIRST (Nearest Core)</option>
+                  <option value="last">LAST (Rear Guard)</option>
+                  <option value="strongest">STRONGEST (Highest HP)</option>
+                  <option value="weakest">WEAKEST (Lowest HP)</option>
+                  <option value="closest">CLOSEST (Shortest Distance)</option>
+                </select>
+              </div>
+
+              <!-- Upgrade / Sell Actions -->
+              <div class="inspector-actions">
+                <button class="btn-upgrade" id="btn-tower-upgrade">
+                  <span class="btn-text">UPGRADE [U]</span>
+                  <span class="btn-cost" id="upgrade-cost-tag">120 ⚡</span>
+                </button>
+                <button class="btn-sell" id="btn-tower-sell">
+                  <span class="btn-text">RECYCLE [S]</span>
+                  <span class="btn-cost" id="sell-refund-tag">+70 ⚡</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </aside>
+      </main>
+
+      <!-- Bottom Build Bar: 6 Tower Construction Modules -->
+      <footer class="hud-bottom-build-bar">
+        <div class="build-bar-header">
+          <span class="build-bar-title">DEFENSE CONSTRUCTORS</span>
+          <span class="build-bar-shortcuts">SELECT TOWER: KEYS [1 - 6] | CANCEL: [ESC]</span>
+        </div>
+        <div class="towers-deck" id="towers-deck">
+          <!-- Populated dynamically via JS with detailed tooltips -->
+        </div>
+      </footer>
+
+      <!-- Modals and Dialogs -->
+
+      <!-- Map / Sector Selection Modal -->
+      <div class="modal-overlay" id="modal-map-select" style="display: none;">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-header">
+            <h2 class="modal-title">SELECT COMBAT SECTOR</h2>
+            <button class="modal-close-btn" id="btn-close-maps">&times;</button>
+          </div>
+          <div class="sectors-grid" id="sectors-grid">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Tactical Codex / Database Modal -->
+      <div class="modal-overlay" id="modal-codex" style="display: none;">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-header">
+            <h2 class="modal-title">TACTICAL COMBAT CODEX</h2>
+            <button class="modal-close-btn" id="btn-close-codex">&times;</button>
+          </div>
+          <div class="codex-tabs">
+            <button class="codex-tab-btn active" data-tab="towers">TOWERS & SYNERGIES</button>
+            <button class="codex-tab-btn" data-tab="enemies">HOSTILE THREATS</button>
+            <button class="codex-tab-btn" data-tab="strategy">STRATEGY GUIDE</button>
+          </div>
+          <div class="codex-content" id="codex-content">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Victory / Mission Cleared Modal -->
+      <div class="modal-overlay" id="modal-victory" style="display: none;">
+        <div class="modal-dialog modal-victory-dialog">
+          <div class="celebration-badge">VICTORY ACHIEVED</div>
+          <h2 class="victory-title">SECTOR SECURED!</h2>
+          <p class="victory-desc">Hostile forces neutralized. Core integrity successfully maintained.</p>
+          <div class="endgame-stats" id="victory-stats">
+            <!-- Stats -->
+          </div>
+          <div class="endgame-actions">
+            <button class="btn-primary" id="btn-victory-restart">REPLAY SECTOR</button>
+            <button class="btn-secondary" id="btn-victory-next-sector">NEXT SECTOR</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Over / Core Breached Modal -->
+      <div class="modal-overlay" id="modal-gameover" style="display: none;">
+        <div class="modal-dialog modal-defeat-dialog">
+          <div class="defeat-badge">CRITICAL BREACH</div>
+          <h2 class="defeat-title">CORE INTEGRITY COMPROMISED</h2>
+          <p class="defeat-desc">Sector defenses collapsed under enemy assault.</p>
+          <div class="endgame-stats" id="gameover-stats">
+            <!-- Stats -->
+          </div>
+          <div class="endgame-actions">
+            <button class="btn-primary" id="btn-gameover-restart">RETRY MISSION</button>
+            <button class="btn-secondary" id="btn-gameover-change-sector">CHANGE SECTOR</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Welcome / Splash Screen Overlay for First Run -->
+      <div class="modal-overlay active" id="modal-start">
+        <div class="modal-dialog modal-start-dialog">
+          <div class="start-hero-image" style="background-image: url('/cyber_defense_bg.jpg');">
+            <div class="hero-overlay-fade"></div>
+            <img src="/logo.jpg" alt="Aegis Core" class="start-logo" />
+          </div>
+          <div class="start-body">
+            <h1 class="start-title">AEGIS PROTOCOL</h1>
+            <span class="start-subtitle">CYBERNETIC TOWER DEFENSE SYSTEM</span>
+            <p class="start-pitch">
+              Strategically place high-tech defense turrets, harness orbital superweapons, and safeguard the power core against relentless waves of hostile drones, armored mechs, and colossal Titan bosses.
+            </p>
+            <div class="start-features">
+              <div class="feat-item"><span>⚡</span> 6 Upgradeable Turrets</div>
+              <div class="feat-item"><span>🛰️</span> 3 Orbital Superweapons</div>
+              <div class="feat-item"><span>🗺️</span> 3 Tactical Themed Sectors</div>
+              <div class="feat-item"><span>🔊</span> Dynamic Web Audio SFX & Synth</div>
+            </div>
+            <button class="btn-primary btn-huge" id="btn-start-game">INITIALIZE DEFENSE PROTOCOL</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Script Entrypoint -->
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
