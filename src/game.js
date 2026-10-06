@@ -157,8 +157,8 @@ export class GameEngine {
 
     // Update Projectiles
     this.projectiles = this.projectiles.filter(p => {
-      p.update(effectiveDt, this);
-      return !p.isDead;
+      const alive = p.update(effectiveDt, this);
+      return !p.isDead && (alive !== false);
     });
 
     // Update Burn Zones
@@ -177,8 +177,12 @@ export class GameEngine {
     // Update Wave Spawner logic
     this.updateWaveLogic(effectiveDt);
 
-    // Notify UI of dynamic stats (e.g. cooldowns, inspector)
-    if (this.onStateChange) this.onStateChange();
+    // Notify UI on a throttled timer (~10Hz) to prevent DOM thrashing
+    this.uiTimer = (this.uiTimer || 0) + effectiveDt;
+    if (this.uiTimer >= 0.1) {
+      this.uiTimer = 0;
+      if (this.onStateChange) this.onStateChange();
+    }
   }
 
   updateWaveLogic(dt) {
@@ -374,6 +378,17 @@ export class GameEngine {
   triggerGameOver() {
     this.isGameOver = true;
     this.audio.defeat();
+
+    const statsEl = document.getElementById('gameover-stats');
+    if (statsEl) {
+      statsEl.innerHTML = `
+        <div class="stat-cell"><span class="sc-label">WAVE REACHED</span><span class="sc-val">${this.currentWave} / ${this.maxWaves}</span></div>
+        <div class="stat-cell"><span class="sc-label">TOTAL SCORE</span><span class="sc-val">${this.score.toLocaleString()}</span></div>
+        <div class="stat-cell"><span class="sc-label">ENEMIES SLAIN</span><span class="sc-val">${this.stats.enemiesKilled}</span></div>
+        <div class="stat-cell"><span class="sc-label">TOWERS BUILT</span><span class="sc-val">${this.stats.towersBuilt}</span></div>
+      `;
+    }
+
     const modal = document.getElementById('modal-gameover');
     if (modal) modal.classList.add('active');
   }
@@ -381,6 +396,16 @@ export class GameEngine {
   triggerVictory() {
     this.isVictory = true;
     this.audio.victory();
+
+    const statsEl = document.getElementById('victory-stats');
+    if (statsEl) {
+      statsEl.innerHTML = `
+        <div class="stat-cell"><span class="sc-label">FINAL SCORE</span><span class="sc-val">${this.score.toLocaleString()}</span></div>
+        <div class="stat-cell"><span class="sc-label">CORE INTEGRITY</span><span class="sc-val">${this.lives} / ${this.maxLives}</span></div>
+        <div class="stat-cell"><span class="sc-label">ENEMIES SLAIN</span><span class="sc-val">${this.stats.enemiesKilled}</span></div>
+        <div class="stat-cell"><span class="sc-label">BOSSES DEFEATED</span><span class="sc-val">${this.stats.bossesDefeated}</span></div>
+      `;
+    }
 
     // Confetti fanfare
     confetti({

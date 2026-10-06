@@ -111,8 +111,12 @@ function bootGame() {
     const dt = Math.min(0.1, (currentTime - lastTime) / 1000);
     lastTime = currentTime;
 
-    game.update(dt);
-    renderer.render(dt);
+    try {
+      game.update(dt);
+      renderer.render(dt);
+    } catch (err) {
+      console.error('Game tick error:', err);
+    }
 
     requestAnimationFrame(gameLoop);
   }

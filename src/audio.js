@@ -72,10 +72,20 @@ class SoundEngine {
     return !this.isBgmMuted;
   }
 
+  throttle(key, minMs = 50) {
+    if (!this.lastTimes) this.lastTimes = {};
+    const now = performance.now();
+    if (this.lastTimes[key] && (now - this.lastTimes[key]) < minMs) {
+      return false;
+    }
+    this.lastTimes[key] = now;
+    return true;
+  }
+
   // --- SOUND EFFECTS ---
 
   laser() {
-    if (this.isMuted) return;
+    if (this.isMuted || !this.throttle('laser', 50)) return;
     this.ensureContext();
     if (!this.ctx) return;
 
@@ -98,7 +108,7 @@ class SoundEngine {
   }
 
   plasmaShot() {
-    if (this.isMuted) return;
+    if (this.isMuted || !this.throttle('plasma', 80)) return;
     this.ensureContext();
     if (!this.ctx) return;
 
@@ -121,7 +131,7 @@ class SoundEngine {
   }
 
   cryo() {
-    if (this.isMuted || !this.noiseBuffer) return;
+    if (this.isMuted || !this.noiseBuffer || !this.throttle('cryo', 100)) return;
     this.ensureContext();
     if (!this.ctx) return;
 
@@ -146,7 +156,7 @@ class SoundEngine {
   }
 
   tesla() {
-    if (this.isMuted) return;
+    if (this.isMuted || !this.throttle('tesla', 70)) return;
     this.ensureContext();
     if (!this.ctx) return;
 
@@ -170,7 +180,7 @@ class SoundEngine {
   }
 
   railgun() {
-    if (this.isMuted) return;
+    if (this.isMuted || !this.throttle('railgun', 120)) return;
     this.ensureContext();
     if (!this.ctx) return;
 
@@ -193,7 +203,7 @@ class SoundEngine {
   }
 
   explosion(isBoss = false) {
-    if (this.isMuted || !this.noiseBuffer) return;
+    if (this.isMuted || !this.noiseBuffer || !this.throttle('explosion', 60)) return;
     this.ensureContext();
     if (!this.ctx) return;
 

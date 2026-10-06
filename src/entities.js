@@ -788,16 +788,23 @@ export class Projectile {
     this.sourceTower = sourceTower;
     this.extra = extra;
     this.isDead = false;
+    this.life = 4.0; // Safety timeout to prevent any projectile getting stuck
 
     // Mortar arc tracking
     this.startX = x;
     this.startY = y;
-    this.totalDist = Math.hypot(this.targetX - x, this.targetY - y);
+    this.totalDist = Math.max(1, Math.hypot(this.targetX - x, this.targetY - y));
     this.travelDist = 0;
   }
 
   update(dt, game) {
-    if (this.isDead) return;
+    if (this.isDead) return false;
+
+    this.life -= dt;
+    if (this.life <= 0) {
+      this.isDead = true;
+      return false;
+    }
 
     if (this.kind === 'bullet') {
       if (this.target && !this.target.isDead) {
@@ -809,13 +816,14 @@ export class Projectile {
       const dist = Math.hypot(dx, dy);
       const step = this.speed * dt;
 
-      if (dist <= step) {
+      if (dist <= step || isNaN(dist) || dist === 0) {
         this.isDead = true;
         if (this.target && !this.target.isDead) {
           const dmgType = this.extra.shredArmor ? 'energy' : 'kinetic';
           this.target.takeDamage(this.damage, dmgType, game, this.sourceTower);
         }
         game.particles.createLaserHit(this.targetX, this.targetY, this.color, 4);
+        return false;
       } else {
         this.x += (dx / dist) * step;
         this.y += (dy / dist) * step;
@@ -834,17 +842,20 @@ export class Projectile {
       const arcHeight = Math.sin(progress * Math.PI) * 50;
       this.renderY = this.y - arcHeight;
 
-      if (progress >= 1) {
+      if (progress >= 1 || isNaN(progress)) {
         this.isDead = true;
         this.detonateMortar(game);
+        return false;
       }
     }
+
+    return !this.isDead;
   }
 
   detonateMortar(game) {
     const splash = this.extra.splashRadius || 65;
     game.audio.explosion();
-    game.particles.createExplosion(this.targetX, this.targetY, this.color, 24, 4.5, 4.5);
+    game.particles.createExplosion(this.targetX, this.targetY, this.color, 16, 4.0, 3.5);
 
     game.enemies.forEach(e => {
       if (e.isDead || e.reachedEnd) return;
@@ -856,7 +867,7 @@ export class Projectile {
     });
 
     if (this.extra.burnZone) {
-      game.burnZones.push(new BurnZone(this.targetX, this.targetY, splash * 0.8, 45, 4.5, this.sourceTower));
+      game.burnZones.push(new BurnZone(this.targetX, this.targetY, splash * 0.8, 45, 4.0, this.sourceTower));
     }
   }
 
@@ -864,8 +875,6 @@ export class Projectile {
     ctx.save();
     if (this.kind === 'bullet') {
       ctx.fillStyle = this.color;
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = this.color;
       ctx.beginPath();
       ctx.arc(this.x, this.y, 3.5, 0, Math.PI * 2);
       ctx.fill();
@@ -878,8 +887,6 @@ export class Projectile {
 
       // Glowing plasma bomb
       ctx.fillStyle = this.color;
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = this.color;
       ctx.beginPath();
       ctx.arc(this.x, this.renderY || this.y, 6, 0, Math.PI * 2);
       ctx.fill();
@@ -895,20 +902,22 @@ export class LightningArc {
     this.targets = targets;
     this.color = color;
     this.life = 0.18;
+    this.isDead = false;
   }
 
   update(dt) {
     this.life -= dt;
-    return this.life > 0;
+    if (this.life <= 0) {
+      this.isDead = true;
+    }
+    return !this.isDead;
   }
 
   draw(ctx) {
-    if (this.targets.length === 0) return;
+    if (this.isDead || this.targets.length === 0) return;
     ctx.save();
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 2.5;
-    ctx.shadowBlur = 14;
-    ctx.shadowColor = this.color;
 
     let prevX = this.startX;
     let prevY = this.startY;
@@ -916,9 +925,8 @@ export class LightningArc {
     for (let t of this.targets) {
       ctx.beginPath();
       ctx.moveTo(prevX, prevY);
-      // Segmented lightning jitter
-      const midX = (prevX + t.x) / 2 + (Math.random() * 20 - 10);
-      const midY = (prevY + t.y) / 2 + (Math.random() * 20 - 10);
+      const midX = (prevX + t.x) / 2 + (Math.random() * 16 - 8);
+      const midY = (prevY + t.y) / 2 + (Math.random() * 16 - 8);
       ctx.lineTo(midX, midY);
       ctx.lineTo(t.x, t.y);
       ctx.stroke();
@@ -938,23 +946,26 @@ export class RailgunBeam {
     this.y2 = y2;
     this.color = color;
     this.isCrit = isCrit;
-    this.life = 0.28;
-    this.maxLife = 0.28;
+    this.life = 0.25;
+    this.maxLife = 0.25;
+    this.isDead = false;
   }
 
   update(dt) {
     this.life -= dt;
-    return this.life > 0;
+    if (this.life <= 0) {
+      this.isDead = true;
+    }
+    return !this.isDead;
   }
 
   draw(ctx) {
-    const alpha = this.life / this.maxLife;
+    if (this.isDead) return;
+    const alpha = Math.max(0, this.life / this.maxLife);
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.strokeStyle = this.isCrit ? '#ffd166' : this.color;
-    ctx.lineWidth = (this.isCrit ? 6 : 4) * alpha;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = this.color;
+    ctx.lineWidth = (this.isCrit ? 5 : 3.5) * alpha;
 
     ctx.beginPath();
     ctx.moveTo(this.x1, this.y1);

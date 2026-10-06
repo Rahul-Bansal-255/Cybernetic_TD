@@ -29,10 +29,6 @@ export class Particle {
   render(ctx) {
     ctx.save();
     ctx.globalAlpha = this.alpha;
-    if (this.glow) {
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = this.color;
-    }
     ctx.fillStyle = this.color;
 
     if (this.shape === 'circle') {
@@ -41,10 +37,10 @@ export class Particle {
       ctx.fill();
     } else if (this.shape === 'spark') {
       ctx.strokeStyle = this.color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(this.x, this.y);
-      ctx.lineTo(this.x - this.vx * 2, this.y - this.vy * 2);
+      ctx.lineTo(this.x - this.vx * 1.5, this.y - this.vy * 1.5);
       ctx.stroke();
     } else if (this.shape === 'square') {
       const s = Math.max(1, this.size * this.alpha);
@@ -63,7 +59,7 @@ export class FloatingText {
     this.fontSize = fontSize;
     this.isCrit = isCrit;
     this.vy = -1.2;
-    this.life = 1.0;
+    this.life = 0.8;
     this.decay = 1.2;
     this.alpha = 1.0;
   }
@@ -82,8 +78,6 @@ export class FloatingText {
     ctx.font = `${this.isCrit ? 'bold ' : ''}${this.fontSize}px 'JetBrains Mono', monospace`;
     ctx.fillStyle = this.color;
     ctx.textAlign = 'center';
-    ctx.shadowBlur = this.isCrit ? 10 : 4;
-    ctx.shadowColor = this.color;
     ctx.fillText(this.text, this.x, this.y);
     ctx.restore();
   }
@@ -114,8 +108,6 @@ export class Shockwave {
     ctx.globalAlpha = alpha;
     ctx.strokeStyle = this.color;
     ctx.lineWidth = Math.max(1, this.lineWidth * alpha);
-    ctx.shadowBlur = 12;
-    ctx.shadowColor = this.color;
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
     ctx.stroke();
@@ -140,6 +132,11 @@ export class ParticleSystem {
     this.particles = this.particles.filter(p => p.update(dt));
     this.texts = this.texts.filter(t => t.update(dt));
     this.shockwaves = this.shockwaves.filter(s => s.update(dt));
+
+    // Hard bounds to prevent unbounded accumulation
+    if (this.particles.length > 80) this.particles.splice(0, this.particles.length - 80);
+    if (this.texts.length > 20) this.texts.splice(0, this.texts.length - 20);
+    if (this.shockwaves.length > 6) this.shockwaves.splice(0, this.shockwaves.length - 6);
   }
 
   render(ctx) {
