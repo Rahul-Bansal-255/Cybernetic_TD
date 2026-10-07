@@ -518,8 +518,8 @@ export class UIManager {
           </span>
         </div>
         <div class="sector-meta-chips">
-          <span class="sector-chip">LANES: ${map.paths.length}</span>
-          <span class="sector-chip">OBSTACLES: ${map.obstacles.length}</span>
+          <span class="sector-chip" title="${map.paths.length} hostile route corridor(s) advancing on your power core simultaneously">🛣️ LANES: ${map.paths.length}</span>
+          <span class="sector-chip" title="${map.obstacles.length} natural terrain barricade(s) where turrets cannot be placed">🛑 OBSTACLES: ${map.obstacles.length}</span>
         </div>
         <div class="sector-tagline">${map.tagline}</div>
         <p class="sector-desc">${map.description}</p>
