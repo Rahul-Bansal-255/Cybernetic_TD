@@ -248,10 +248,17 @@ export class UIManager {
     this.inspName.textContent = t.proto.name.toUpperCase();
     this.inspTier.textContent = `TIER ${t.tier}: ${t.tierName}`;
 
-    this.inspDamage.textContent = t.effectiveDamage;
-    this.inspRate.textContent = `${t.effectiveFireRate.toFixed(1)}/s`;
-    this.inspRange.textContent = Math.round(t.effectiveRange);
-    this.inspDps.textContent = t.dps;
+    if (t.proto.isSupport) {
+      this.inspDamage.textContent = 'AURA';
+      this.inspRate.textContent = `+${Math.round((t.proto.buffSpeed || 0) * 100)}% SPD`;
+      this.inspRange.textContent = Math.round(t.effectiveRange);
+      this.inspDps.textContent = `+${t.proto.bonusCreditsWave || 0}⚡/w`;
+    } else {
+      this.inspDamage.textContent = t.effectiveDamage;
+      this.inspRate.textContent = `${t.effectiveFireRate.toFixed(1)}/s`;
+      this.inspRange.textContent = Math.round(t.effectiveRange);
+      this.inspDps.textContent = t.dps;
+    }
     this.inspKills.textContent = t.kills;
     this.inspTotalDmg.textContent = t.totalDamage.toLocaleString();
     this.inspTargetSelect.value = t.targetPriority;
@@ -565,13 +572,21 @@ export class UIManager {
       container.innerHTML = `
         <div class="codex-section-grid">
           ${Object.values(TOWER_TYPES).map(t => {
-            const dps = Math.round((t.isBeam ? t.damage : (t.damage * (t.fireRate || 1))));
+            let statsLine = '';
+            if (t.isSupport) {
+              statsLine = `Support Aura: +${Math.round((t.buffSpeed || 0) * 100)}% Speed | Range: ${t.range} | Income: +${t.bonusCreditsWave || 0} ⚡/wave`;
+            } else if (t.isBeam) {
+              statsLine = `Beam DPS: ${t.damage} | Range: ${t.range} | Slow: ${Math.round((t.slowFactor || 0.4) * 100)}%`;
+            } else {
+              const dps = Math.round(t.damage * (t.fireRate || 1));
+              statsLine = `Damage: ${t.damage} | Range: ${t.range} | Rate: ${t.fireRate}/s (~${dps} DPS)`;
+            }
             return `
             <div class="codex-entry">
               <span class="codex-icon">${t.icon}</span>
               <div class="codex-info">
                 <span class="codex-title">${t.name} (${t.cost} ⚡)</span>
-                <p class="codex-desc" style="color: #00f2fe; margin-bottom: 3px;">Damage: ${t.damage} | Range: ${t.range} | ${t.isBeam ? `Beam DPS: ${dps}` : `Rate: ${t.fireRate}/s (~${dps} DPS)`}</p>
+                <p class="codex-desc" style="color: #00f2fe; margin-bottom: 3px;">${statsLine}</p>
                 <p class="codex-desc">${t.description}</p>
                 <p class="codex-desc" style="color: #ffd166; margin-top: 4px;">Upgrades: ${t.upgrades.map(u => u.tierName).join(' ➔ ')}</p>
               </div>

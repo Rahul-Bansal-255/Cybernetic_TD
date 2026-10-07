@@ -13,6 +13,9 @@ function bootGame() {
   const renderer = new Renderer(canvas, game);
   const ui = new UIManager(game);
 
+  window.__GAME__ = game;
+  window.__UI__ = ui;
+
   // Link game engine callbacks to UI
   game.onStateChange = () => ui.updateHUD();
   game.onWaveChange = () => ui.updateHUD();

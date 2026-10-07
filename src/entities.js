@@ -401,11 +401,13 @@ export class Tower {
   }
 
   get effectiveDamage() {
-    return Math.round(this.baseDamage * (1 + this.buffDamage));
+    if (this.proto.isSupport) return 0;
+    return Math.round((this.baseDamage || 0) * (1 + this.buffDamage));
   }
 
   get effectiveFireRate() {
-    return this.baseFireRate * (1 + this.buffSpeed);
+    if (this.proto.isSupport) return 0;
+    return (this.baseFireRate || 0) * (1 + this.buffSpeed);
   }
 
   get effectiveRange() {
@@ -413,6 +415,8 @@ export class Tower {
   }
 
   get dps() {
+    if (this.proto.isSupport) return 0;
+    if (this.proto.isBeam) return Math.round(this.effectiveDamage);
     return Math.round(this.effectiveDamage * this.effectiveFireRate);
   }
 
