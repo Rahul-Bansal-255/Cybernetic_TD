@@ -1,6 +1,6 @@
 // Main Game State and Simulation Engine
 
-import { CELL_SIZE, GRID_COLS, GRID_ROWS, TOWER_TYPES, SUPERWEAPONS } from './constants.js';
+import { CELL_SIZE, GRID_COLS, GRID_ROWS, TOWER_TYPES, SUPERWEAPONS, DIFFICULTY_MODES, CANVAS_WIDTH, CANVAS_HEIGHT } from './constants.js';
 import { MAPS } from './maps.js';
 import { Tower, Enemy } from './entities.js';
 import { ParticleSystem } from './particles.js';
@@ -12,17 +12,18 @@ export class GameEngine {
     this.audio = audio;
     this.particles = new ParticleSystem();
 
-    // Map & Placement
+    // Map & Difficulty
     this.currentMap = MAPS.sector_alpha;
+    this.difficulty = DIFFICULTY_MODES.veteran;
     this.towers = [];
     this.enemies = [];
     this.projectiles = [];
     this.burnZones = [];
 
     // Player Resources
-    this.maxLives = 20;
+    this.maxLives = this.difficulty.lives;
     this.lives = this.maxLives;
-    this.credits = 450;
+    this.credits = this.difficulty.startingCredits;
     this.score = 0;
 
     // Wave Progression
@@ -61,7 +62,7 @@ export class GameEngine {
     this.stats = {
       enemiesKilled: 0,
       totalDamageDealt: 0,
-      creditsEarned: 450,
+      creditsEarned: this.difficulty.startingCredits,
       towersBuilt: 0,
       bossesDefeated: 0
     };
@@ -74,14 +75,29 @@ export class GameEngine {
     this.onBossKilled = null;
   }
 
-  init(mapId = 'sector_alpha') {
+  init(mapId = 'sector_alpha', diffId = 'veteran') {
+    if (diffId && DIFFICULTY_MODES[diffId]) {
+      this.difficulty = DIFFICULTY_MODES[diffId];
+    }
     this.selectSector(mapId);
   }
 
-  startWithSector(mapId) {
+  setDifficulty(diffId) {
+    if (!DIFFICULTY_MODES[diffId]) return;
+    this.difficulty = DIFFICULTY_MODES[diffId];
+    this.resetSector();
+  }
+
+  startWithSector(mapId, diffId = null) {
+    if (diffId && DIFFICULTY_MODES[diffId]) {
+      this.difficulty = DIFFICULTY_MODES[diffId];
+    }
     this.hasStarted = true;
     this.isPaused = false;
-    this.selectSector(mapId);
+    if (MAPS[mapId]) {
+      this.currentMap = MAPS[mapId];
+    }
+    this.resetSector();
   }
 
   selectSector(mapId) {
@@ -97,8 +113,9 @@ export class GameEngine {
     this.burnZones = [];
     this.particles.clear();
 
+    this.maxLives = this.difficulty.lives;
     this.lives = this.maxLives;
-    this.credits = 450;
+    this.credits = this.difficulty.startingCredits;
     this.score = 0;
     this.currentWave = 0;
     this.waveState = 'standby';
@@ -120,7 +137,7 @@ export class GameEngine {
     this.stats = {
       enemiesKilled: 0,
       totalDamageDealt: 0,
-      creditsEarned: 450,
+      creditsEarned: this.difficulty.startingCredits,
       towersBuilt: 0,
       bossesDefeated: 0
     };
@@ -239,7 +256,7 @@ export class GameEngine {
 
   callWaveEarly() {
     if (this.waveState === 'standby' && this.currentWave < this.maxWaves) {
-      const bonus = Math.round(20 + this.waveDelayTimer * 2);
+      const bonus = Math.round(10 + this.waveDelayTimer * 1);
       this.credits += bonus;
       this.stats.creditsEarned += bonus;
       this.particles.addText(CANVAS_WIDTH / 2, 80, `EARLY CALL BONUS: +${bonus} ⚡`, '#ffd166', 16, true);
@@ -252,15 +269,18 @@ export class GameEngine {
     this.waveState = 'standby';
     this.waveDelayTimer = 8; // countdown to next wave
 
-    // Wave completion bonus
-    const waveReward = 40 + this.currentWave * 8;
+    // Rebalanced wave completion reward
+    const waveReward = Math.round(20 + this.currentWave * 4);
     this.credits += waveReward;
-    this.score += 500 * this.currentWave;
+    this.stats.creditsEarned += waveReward;
+    const waveScore = Math.round(250 * this.currentWave * (this.difficulty?.scoreMult ?? 1));
+    this.score += waveScore;
 
     // Beacon tower bonus credits
     this.towers.forEach(t => {
       if (t.proto.isSupport && t.proto.bonusCreditsWave) {
         this.credits += t.proto.bonusCreditsWave;
+        this.stats.creditsEarned += t.proto.bonusCreditsWave;
         this.particles.addText(t.x, t.y - 20, `+${t.proto.bonusCreditsWave} ⚡ (RELAY)`, '#00ff87', 12);
       }
     });
@@ -280,9 +300,6 @@ export class GameEngine {
     const queue = [];
     const paths = this.currentMap.paths;
     const isBossWave = wave % 5 === 0;
-
-    // Base difficulty multiplier
-    const mult = 1 + (wave - 1) * 0.16;
 
     if (isBossWave) {
       // Boss wave composition
@@ -335,8 +352,9 @@ export class GameEngine {
   spawnEnemy(typeKey, pathIndex = 0) {
     const paths = this.currentMap.paths;
     const path = paths[pathIndex % paths.length];
-    const waveMult = 1 + (this.currentWave - 1) * 0.16;
-    const enemy = new Enemy(typeKey, path, waveMult);
+    const waveScale = this.difficulty?.waveScale ?? 0.28;
+    const waveMult = 1 + (this.currentWave - 1) * waveScale;
+    const enemy = new Enemy(typeKey, path, waveMult, this.difficulty);
     this.enemies.push(enemy);
 
     if (enemy.isBoss && this.onBossSpawned) {
@@ -389,6 +407,7 @@ export class GameEngine {
     const statsEl = document.getElementById('gameover-stats');
     if (statsEl) {
       statsEl.innerHTML = `
+        <div class="stat-cell"><span class="sc-label">THREAT LEVEL</span><span class="sc-val" style="color: ${this.difficulty.badgeColor}">${this.difficulty.name}</span></div>
         <div class="stat-cell"><span class="sc-label">WAVE REACHED</span><span class="sc-val">${this.currentWave} / ${this.maxWaves}</span></div>
         <div class="stat-cell"><span class="sc-label">TOTAL SCORE</span><span class="sc-val">${this.score.toLocaleString()}</span></div>
         <div class="stat-cell"><span class="sc-label">ENEMIES SLAIN</span><span class="sc-val">${this.stats.enemiesKilled}</span></div>
@@ -407,6 +426,7 @@ export class GameEngine {
     const statsEl = document.getElementById('victory-stats');
     if (statsEl) {
       statsEl.innerHTML = `
+        <div class="stat-cell"><span class="sc-label">THREAT LEVEL</span><span class="sc-val" style="color: ${this.difficulty.badgeColor}">${this.difficulty.name}</span></div>
         <div class="stat-cell"><span class="sc-label">FINAL SCORE</span><span class="sc-val">${this.score.toLocaleString()}</span></div>
         <div class="stat-cell"><span class="sc-label">CORE INTEGRITY</span><span class="sc-val">${this.lives} / ${this.maxLives}</span></div>
         <div class="stat-cell"><span class="sc-label">ENEMIES SLAIN</span><span class="sc-val">${this.stats.enemiesKilled}</span></div>

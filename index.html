@@ -23,7 +23,10 @@
           <img src="/logo.jpg" alt="Aegis Core" class="hud-logo" />
           <div class="hud-title-wrap">
             <h1 class="hud-title">AEGIS PROTOCOL</h1>
-            <span class="hud-sector-tag" id="current-sector-name">SECTOR ALPHA</span>
+            <div class="hud-tags-row">
+              <span class="hud-sector-tag" id="current-sector-name">SECTOR ALPHA</span>
+              <span class="hud-diff-tag" id="current-diff-tag">VETERAN</span>
+            </div>
           </div>
         </div>
 
@@ -264,14 +267,29 @@
 
       <!-- Map / Sector Selection Modal -->
       <div class="modal-overlay" id="modal-map-select">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
           <div class="modal-header">
             <div>
-              <h2 class="modal-title">SELECT COMBAT SECTOR</h2>
-              <span class="modal-subtitle" id="map-select-subtitle">Select a battle sector to deploy defense protocol</span>
+              <h2 class="modal-title">COMBAT SECTORS & THREAT LEVEL</h2>
+              <span class="modal-subtitle" id="map-select-subtitle">Select tactical difficulty and combat sector to deploy defense protocol</span>
             </div>
             <button class="modal-close-btn" id="btn-close-maps">&times;</button>
           </div>
+
+          <!-- Difficulty Level Selector Container -->
+          <div class="difficulty-selection-panel" id="difficulty-selection-panel">
+            <div class="diff-header-row">
+              <span class="diff-panel-label">ENGAGEMENT THREAT LEVEL</span>
+              <span class="diff-hint-label">Calibrates enemy HP, speed, bounties, core integrity & score bonus</span>
+            </div>
+            <div class="diff-buttons-strip" id="diff-buttons-strip">
+              <!-- Rendered dynamically -->
+            </div>
+            <div class="diff-intel-card" id="diff-intel-card">
+              <!-- Rendered dynamically with stat chips & description -->
+            </div>
+          </div>
+
           <div class="sectors-grid" id="sectors-grid">
             <!-- Rendered dynamically -->
           </div>
@@ -288,6 +306,7 @@
           <div class="codex-tabs">
             <button class="codex-tab-btn active" data-tab="towers">TOWERS & SYNERGIES</button>
             <button class="codex-tab-btn" data-tab="enemies">HOSTILE THREATS</button>
+            <button class="codex-tab-btn" data-tab="difficulty">THREAT LEVELS</button>
             <button class="codex-tab-btn" data-tab="strategy">STRATEGY GUIDE</button>
           </div>
           <div class="codex-content" id="codex-content">

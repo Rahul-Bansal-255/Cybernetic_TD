@@ -128,6 +128,13 @@ body::before {
   text-shadow: 0 0 20px rgba(0, 242, 254, 0.4);
 }
 
+.hud-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+
 .hud-sector-tag {
   font-family: var(--font-mono);
   font-size: 0.68rem;
@@ -149,6 +156,26 @@ body::before {
   border-color: var(--neon-cyan);
   box-shadow: var(--glow-cyan);
   transform: translateY(-1px);
+}
+
+.hud-diff-tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--neon-amber);
+  color: var(--neon-amber);
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.hud-diff-tag:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.25);
 }
 
 /* Stats Clusters */
@@ -1028,6 +1055,11 @@ body::before {
   width: 960px;
 }
 
+.modal-xl {
+  width: 1140px;
+  max-width: 95vw;
+}
+
 .modal-header {
   padding: 16px 24px;
   border-bottom: 1px solid var(--border-subtle);
@@ -1195,13 +1227,187 @@ body::before {
   border-color: var(--border-glow);
 }
 
+/* Difficulty Level Selector in Map Modal */
+.difficulty-selection-panel {
+  padding: 14px 24px;
+  background: rgba(6, 11, 24, 0.95);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.diff-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.diff-panel-label {
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--neon-cyan);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.diff-hint-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+.diff-buttons-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.diff-mode-btn {
+  background: rgba(18, 27, 48, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.diff-mode-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--diff-color, var(--neon-cyan));
+  opacity: 0.35;
+  transition: all 0.2s ease;
+}
+
+.diff-mode-btn:hover {
+  background: rgba(26, 38, 68, 0.9);
+  border-color: var(--diff-color, var(--neon-cyan));
+  transform: translateY(-2px);
+}
+
+.diff-mode-btn.active {
+  background: rgba(22, 33, 60, 0.95);
+  border-color: var(--diff-color, var(--neon-cyan));
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.5), 0 0 10px var(--diff-color);
+}
+
+.diff-mode-btn.active::before {
+  height: 3px;
+  opacity: 1;
+}
+
+.diff-btn-name {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.diff-btn-tag {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.diff-intel-card {
+  background: rgba(10, 16, 32, 0.85);
+  border: 1px solid rgba(79, 172, 254, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.diff-intel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.diff-intel-title {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.diff-intel-tagline {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.diff-stat-chips {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.diff-chip {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  padding: 5px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+}
+
+.dc-icon {
+  font-size: 0.82rem;
+}
+
+.dc-label {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+.dc-val {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.diff-intel-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
 /* Sectors Grid in Map Selection Modal */
 .sectors-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
-  padding: 20px 24px;
-  max-height: calc(88vh - 75px);
+  padding: 18px 24px;
+  max-height: calc(88vh - 280px);
+  min-height: 240px;
   overflow-y: auto;
 }
 
@@ -1431,6 +1637,76 @@ body::before {
   font-size: 0.74rem;
   color: var(--text-muted);
   line-height: 1.35;
+}
+
+/* Codex Threat Levels Grid */
+.codex-diff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.codex-diff-card {
+  background: rgba(18, 27, 48, 0.5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.codex-diff-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.codex-diff-name {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.codex-diff-score {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffd166;
+}
+
+.codex-diff-tagline {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.codex-diff-specs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+}
+
+.cd-spec {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-dim);
+}
+
+.cd-spec strong {
+  color: #fff;
+}
+
+.codex-diff-desc {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 /* Victory & Defeat Dialogs */

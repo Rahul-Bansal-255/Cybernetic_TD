@@ -6,35 +6,94 @@ export const CELL_SIZE = 48;
 export const CANVAS_WIDTH = GRID_COLS * CELL_SIZE; // 1200
 export const CANVAS_HEIGHT = GRID_ROWS * CELL_SIZE; // 720
 
+export const DIFFICULTY_MODES = {
+  cadet: {
+    id: 'cadet',
+    name: 'CADET',
+    tagline: 'Standard defensive training',
+    badgeColor: '#06d6a0',
+    hpMult: 1.0,
+    speedMult: 1.0,
+    bountyMult: 0.85,
+    scoreMult: 1.0,
+    startingCredits: 240,
+    lives: 20,
+    waveScale: 0.22,
+    desc: 'Standard hostile incursions. Balanced baseline economy.'
+  },
+  veteran: {
+    id: 'veteran',
+    name: 'VETERAN',
+    tagline: 'Recommended challenge for tactical defense',
+    badgeColor: '#ffd166',
+    hpMult: 1.45,
+    speedMult: 1.08,
+    bountyMult: 0.65,
+    scoreMult: 1.4,
+    startingCredits: 190,
+    lives: 15,
+    waveScale: 0.28,
+    desc: '+45% Enemy HP, +8% Speed, -35% Bounty, 15 Core HP. Requires sharp synergies.'
+  },
+  elite: {
+    id: 'elite',
+    name: 'ELITE',
+    tagline: 'Severe threat incursion with depleted supply',
+    badgeColor: '#ff007f',
+    hpMult: 2.1,
+    speedMult: 1.18,
+    bountyMult: 0.45,
+    scoreMult: 2.0,
+    startingCredits: 150,
+    lives: 10,
+    waveScale: 0.35,
+    desc: '+110% Enemy HP, +18% Speed, -55% Bounty, 10 Core HP. Intense pressure.'
+  },
+  apocalypse: {
+    id: 'apocalypse',
+    name: 'APOCALYPSE',
+    tagline: 'Ruthless invasion. Extreme lethal precision.',
+    badgeColor: '#ef476f',
+    hpMult: 3.0,
+    speedMult: 1.28,
+    bountyMult: 0.32,
+    scoreMult: 3.2,
+    startingCredits: 120,
+    lives: 5,
+    waveScale: 0.45,
+    desc: '+200% Enemy HP, +28% Speed, -68% Bounty, 5 Core HP. Zero error margin.'
+  }
+};
+
 export const TOWER_TYPES = {
   gatling: {
     id: 'gatling',
     name: 'Pulse Blaster',
     tagline: 'High fire-rate kinetic disruptor',
     icon: '🔫',
-    cost: 100,
+    cost: 110,
     range: 150,
-    damage: 18,
-    fireRate: 5.0, // shots per sec
+    damage: 14,
+    fireRate: 4.5, // shots per sec (63 DPS)
     color: '#00f2fe',
     description: 'Rapid-fire energy bullets. Excels against swift drones and low-armor targets.',
     upgrades: [
       {
-        cost: 90,
+        cost: 100,
         tierName: 'Twin Pulsar',
-        damageDelta: 12,
-        rateDelta: 1.2,
+        damageDelta: 8,
+        rateDelta: 0.8,
         rangeDelta: 15,
-        desc: '+12 Damage, +1.2 Fire Rate, +15 Range'
+        desc: '+8 Damage, +0.8 Fire Rate, +15 Range'
       },
       {
-        cost: 180,
+        cost: 200,
         tierName: 'Hyper-Vulcan',
-        damageDelta: 24,
-        rateDelta: 1.8,
+        damageDelta: 16,
+        rateDelta: 1.2,
         rangeDelta: 20,
         shredArmor: true,
-        desc: '+24 Damage, +1.8 Fire Rate, Armor-Piercing rounds'
+        desc: '+16 Damage, +1.2 Fire Rate, Armor-Piercing rounds'
       }
     ]
   },
@@ -43,30 +102,30 @@ export const TOWER_TYPES = {
     name: 'Plasma Mortar',
     tagline: 'Long-range AoE plasma payload',
     icon: '💥',
-    cost: 175,
-    range: 190,
-    damage: 85,
-    splashRadius: 65,
-    fireRate: 0.85,
+    cost: 185,
+    range: 185,
+    damage: 70,
+    splashRadius: 60,
+    fireRate: 0.75,
     color: '#ff6b35',
     description: 'Fires high-explosive plasma spheres that detonate in an area on impact.',
     upgrades: [
       {
-        cost: 135,
+        cost: 150,
         tierName: 'Heavy Bombard',
-        damageDelta: 55,
-        rangeDelta: 20,
+        damageDelta: 40,
+        rangeDelta: 15,
         splashDelta: 15,
-        desc: '+55 Damage, +15 Blast Radius, +20 Range'
+        desc: '+40 Damage, +15 Blast Radius, +15 Range'
       },
       {
-        cost: 250,
+        cost: 280,
         tierName: 'Thermite Cataclysm',
-        damageDelta: 100,
-        rangeDelta: 25,
-        splashDelta: 25,
+        damageDelta: 70,
+        rangeDelta: 20,
+        splashDelta: 20,
         burnZone: true,
-        desc: '+100 Damage, Leaves lingering burning plasma zone on impact'
+        desc: '+70 Damage, Leaves lingering burning plasma zone on impact'
       }
     ]
   },
@@ -75,30 +134,30 @@ export const TOWER_TYPES = {
     name: 'Cryo Emitter',
     tagline: 'Sub-zero continuous beam slow',
     icon: '❄️',
-    cost: 150,
+    cost: 160,
     range: 140,
-    damage: 30, // dps
-    slowFactor: 0.45,
+    damage: 22, // dps
+    slowFactor: 0.35,
     color: '#00e5ff',
     isBeam: true,
     description: 'Continuous cryogenic beam that drastically slows enemies and deals thermal shock.',
     upgrades: [
       {
-        cost: 110,
+        cost: 130,
         tierName: 'Blizzard Ray',
-        damageDelta: 20,
-        rangeDelta: 20,
-        slowFactor: 0.60,
-        desc: '+20 DPS, Increases slow to 60%, +20 Range'
+        damageDelta: 14,
+        rangeDelta: 15,
+        slowFactor: 0.50,
+        desc: '+14 DPS, Increases slow to 50%, +15 Range'
       },
       {
-        cost: 210,
+        cost: 240,
         tierName: 'Absolute Zero',
-        damageDelta: 35,
-        rangeDelta: 25,
-        slowFactor: 0.75,
+        damageDelta: 22,
+        rangeDelta: 20,
+        slowFactor: 0.65,
         chains: 2,
-        desc: '+35 DPS, 75% freeze, Chains beam to 2 adjacent targets'
+        desc: '+22 DPS, 65% freeze, Chains beam to 2 adjacent targets'
       }
     ]
   },
@@ -107,31 +166,31 @@ export const TOWER_TYPES = {
     name: 'Tesla Pylon',
     tagline: 'Chaining high-voltage lightning',
     icon: '⚡',
-    cost: 220,
+    cost: 230,
     range: 165,
-    damage: 60,
-    fireRate: 1.15,
+    damage: 48,
+    fireRate: 1.0,
     chainCount: 3,
-    stunChance: 0.25,
+    stunChance: 0.20,
     color: '#c77dff',
     description: 'Discharges arcs of chaining lightning that jump between targets with a chance to stun.',
     upgrades: [
       {
-        cost: 160,
+        cost: 175,
         tierName: 'Arc Matrix',
-        damageDelta: 38,
-        rangeDelta: 20,
+        damageDelta: 28,
+        rangeDelta: 15,
         chainDelta: 2,
-        desc: '+38 Damage, Chains up to 5 targets, +20 Range'
+        desc: '+28 Damage, Chains up to 5 targets, +15 Range'
       },
       {
-        cost: 280,
+        cost: 310,
         tierName: 'Storm Overlord',
-        damageDelta: 75,
-        rangeDelta: 25,
-        chainDelta: 3,
-        stunChance: 0.45,
-        desc: '+75 Damage, Chains 8 targets, 45% Stun Chance'
+        damageDelta: 50,
+        rangeDelta: 20,
+        chainDelta: 2,
+        stunChance: 0.35,
+        desc: '+50 Damage, Chains 7 targets, 35% Stun Chance'
       }
     ]
   },
@@ -140,30 +199,30 @@ export const TOWER_TYPES = {
     name: 'Void Railgun',
     tagline: 'Hyper-velocity sniper lance',
     icon: '🎯',
-    cost: 300,
-    range: 310,
-    damage: 280,
-    fireRate: 0.42,
+    cost: 320,
+    range: 290,
+    damage: 220,
+    fireRate: 0.38,
     pierce: true,
     bossBonus: 1.5,
     color: '#ff007f',
     description: 'Devastating line-piercing sniper beam with massive range and high boss damage.',
     upgrades: [
       {
-        cost: 225,
+        cost: 250,
         tierName: 'Gauss Lance',
-        damageDelta: 190,
-        rangeDelta: 40,
-        bossBonus: 1.8,
-        desc: '+190 Damage, +40 Range, 1.8x Boss Multiplier'
+        damageDelta: 140,
+        rangeDelta: 30,
+        bossBonus: 1.7,
+        desc: '+140 Damage, +30 Range, 1.7x Boss Multiplier'
       },
       {
-        cost: 400,
+        cost: 450,
         tierName: 'Orbital Annihilator',
-        damageDelta: 380,
-        rangeDelta: 60,
-        critChance: 0.35,
-        desc: '+380 Damage, +60 Range, 35% chance for 3x Critical Hit'
+        damageDelta: 250,
+        rangeDelta: 40,
+        critChance: 0.25,
+        desc: '+250 Damage, +40 Range, 25% chance for 2.5x Critical Hit'
       }
     ]
   },
@@ -172,31 +231,31 @@ export const TOWER_TYPES = {
     name: 'Aegis Relay',
     tagline: 'Buffs adjacent towers & income',
     icon: '🌐',
-    cost: 200,
-    range: 160,
-    buffSpeed: 0.25,
-    buffRange: 0.15,
-    bonusCreditsWave: 25,
+    cost: 210,
+    range: 150,
+    buffSpeed: 0.20,
+    buffRange: 0.10,
+    bonusCreditsWave: 15,
     color: '#00ff87',
     isSupport: true,
     description: 'Boosts attack speed and range of neighboring turrets while generating bonus credits.',
     upgrades: [
       {
-        cost: 140,
+        cost: 160,
         tierName: 'Overcharge Relay',
-        buffSpeed: 0.40,
-        rangeDelta: 25,
-        bonusCreditsWave: 45,
-        desc: '+40% Atk Speed Aura, 45 ⚡ bonus per wave, +25 Range'
+        buffSpeed: 0.30,
+        rangeDelta: 20,
+        bonusCreditsWave: 25,
+        desc: '+30% Atk Speed Aura, 25 ⚡ bonus per wave, +20 Range'
       },
       {
-        cost: 260,
+        cost: 290,
         tierName: 'Chronos Citadel',
-        buffSpeed: 0.60,
-        buffDamage: 0.25,
-        rangeDelta: 35,
-        bonusCreditsWave: 75,
-        desc: '+60% Atk Speed, +25% Damage Aura, 75 ⚡ per wave'
+        buffSpeed: 0.45,
+        buffDamage: 0.20,
+        rangeDelta: 30,
+        bonusCreditsWave: 40,
+        desc: '+45% Atk Speed, +20% Damage Aura, 40 ⚡ per wave'
       }
     ]
   }
@@ -206,12 +265,12 @@ export const ENEMY_TYPES = {
   scout: {
     type: 'scout',
     name: 'Scout Drone',
-    hp: 85,
-    speed: 2.3,
+    hp: 140,
+    speed: 2.4,
     armor: 0,
     shield: 0,
-    bounty: 12,
-    score: 50,
+    bounty: 3,
+    score: 20,
     color: '#00f2fe',
     size: 13,
     icon: '🛸'
@@ -219,12 +278,12 @@ export const ENEMY_TYPES = {
   raider: {
     type: 'raider',
     name: 'Cyber Raider',
-    hp: 210,
-    speed: 1.6,
-    armor: 5,
+    hp: 320,
+    speed: 1.65,
+    armor: 8,
     shield: 0,
-    bounty: 20,
-    score: 90,
+    bounty: 6,
+    score: 45,
     color: '#ffd166',
     size: 16,
     icon: '🤖'
@@ -232,12 +291,12 @@ export const ENEMY_TYPES = {
   juggernaut: {
     type: 'juggernaut',
     name: 'Iron Juggernaut',
-    hp: 650,
+    hp: 950,
     speed: 0.95,
-    armor: 25,
+    armor: 30,
     shield: 0,
-    bounty: 50,
-    score: 220,
+    bounty: 15,
+    score: 110,
     color: '#9d4edd',
     size: 22,
     icon: '🛡️'
@@ -245,12 +304,12 @@ export const ENEMY_TYPES = {
   speeder: {
     type: 'speeder',
     name: 'Phase Speeder',
-    hp: 150,
-    speed: 3.0,
+    hp: 220,
+    speed: 3.1,
     armor: 0,
-    shield: 40,
-    bounty: 28,
-    score: 130,
+    shield: 80,
+    bounty: 8,
+    score: 60,
     color: '#06d6a0',
     size: 14,
     icon: '⚡'
@@ -258,12 +317,12 @@ export const ENEMY_TYPES = {
   shielded: {
     type: 'shielded',
     name: 'Aegis Crusher',
-    hp: 360,
+    hp: 550,
     speed: 1.25,
-    armor: 12,
-    shield: 250,
-    bounty: 55,
-    score: 280,
+    armor: 14,
+    shield: 450,
+    bounty: 18,
+    score: 140,
     color: '#4cc9f0',
     size: 19,
     icon: '🔮'
@@ -271,12 +330,12 @@ export const ENEMY_TYPES = {
   titan: {
     type: 'titan',
     name: 'Titan Dreadnought',
-    hp: 4200,
+    hp: 6800,
     speed: 0.72,
-    armor: 30,
-    shield: 1200,
-    bounty: 400,
-    score: 2500,
+    armor: 35,
+    shield: 2400,
+    bounty: 80,
+    score: 1000,
     color: '#ef476f',
     size: 32,
     isBoss: true,
@@ -288,23 +347,23 @@ export const SUPERWEAPONS = {
   orbital: {
     id: 'orbital',
     name: 'Orbital Strike',
-    cooldown: 45,
+    cooldown: 55,
     radius: 130,
-    damage: 750,
+    damage: 600,
     key: 'Q'
   },
   stasis: {
     id: 'stasis',
     name: 'Cryo Stasis',
-    cooldown: 50,
-    duration: 4.5,
+    cooldown: 55,
+    duration: 3.8,
     key: 'W'
   },
   overdrive: {
     id: 'overdrive',
     name: 'Overdrive Surge',
-    cooldown: 40,
-    duration: 6.0,
+    cooldown: 48,
+    duration: 5.0,
     key: 'E'
   }
 };

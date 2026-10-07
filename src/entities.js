@@ -3,23 +3,30 @@
 import { CELL_SIZE, TOWER_TYPES, ENEMY_TYPES } from './constants.js';
 
 export class Enemy {
-  constructor(typeKey, path, waveMultiplier = 1) {
+  constructor(typeKey, path, waveMultiplier = 1, difficulty = null) {
     const proto = ENEMY_TYPES[typeKey] || ENEMY_TYPES.scout;
     this.type = proto.type;
     this.name = proto.name;
     this.path = path;
     this.pathIndex = 0;
 
-    // Multipliers scale with wave progress
-    this.maxHp = Math.round(proto.hp * waveMultiplier);
+    const hpMult = difficulty?.hpMult ?? 1.0;
+    const speedMult = difficulty?.speedMult ?? 1.0;
+    const bountyMult = difficulty?.bountyMult ?? 1.0;
+    const scoreMult = difficulty?.scoreMult ?? 1.0;
+
+    // Multipliers scale with wave progress and combat sector difficulty
+    this.maxHp = Math.round(proto.hp * waveMultiplier * hpMult);
     this.hp = this.maxHp;
-    this.maxShield = Math.round(proto.shield * waveMultiplier);
+    this.maxShield = Math.round(proto.shield * waveMultiplier * hpMult);
     this.shield = this.maxShield;
     this.armor = proto.armor;
-    this.baseSpeed = proto.speed;
+    this.baseSpeed = proto.speed * speedMult;
     this.speed = this.baseSpeed;
-    this.bounty = Math.round(proto.bounty * (1 + (waveMultiplier - 1) * 0.2));
-    this.score = Math.round(proto.score * waveMultiplier);
+    // Controlled bounty scaled by difficulty (prevents runaway inflation)
+    this.bounty = Math.max(1, Math.round(proto.bounty * bountyMult));
+    // Score scales with wave progress and difficulty bonus
+    this.score = Math.round(proto.score * waveMultiplier * scoreMult);
     this.color = proto.color;
     this.size = proto.size;
     this.isBoss = !!proto.isBoss;

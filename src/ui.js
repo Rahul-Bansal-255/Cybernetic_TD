@@ -1,6 +1,6 @@
 // HUD and Interactive UI Manager
 
-import { TOWER_TYPES, ENEMY_TYPES, SUPERWEAPONS, CANVAS_WIDTH, CANVAS_HEIGHT, CELL_SIZE } from './constants.js';
+import { TOWER_TYPES, ENEMY_TYPES, SUPERWEAPONS, DIFFICULTY_MODES, CANVAS_WIDTH, CANVAS_HEIGHT, CELL_SIZE } from './constants.js';
 import { MAPS } from './maps.js';
 
 export class UIManager {
@@ -21,6 +21,9 @@ export class UIManager {
     this.elWave = document.getElementById('hud-wave');
     this.elScore = document.getElementById('hud-score');
     this.elSectorName = document.getElementById('current-sector-name');
+    this.elDiffTag = document.getElementById('current-diff-tag');
+    this.diffButtonsStrip = document.getElementById('diff-buttons-strip');
+    this.diffIntelCard = document.getElementById('diff-intel-card');
 
     this.towersDeck = document.getElementById('towers-deck');
     this.placementBanner = document.getElementById('placement-banner');
@@ -170,6 +173,13 @@ export class UIManager {
     this.elWave.textContent = this.game.hasStarted ? `${this.game.currentWave} / ${this.game.maxWaves}` : `0 / ${this.game.maxWaves}`;
     this.elScore.textContent = this.game.score.toLocaleString();
     this.elSectorName.textContent = this.game.hasStarted ? this.game.currentMap.name.toUpperCase() : 'SELECT SECTOR';
+
+    if (this.elDiffTag) {
+      this.elDiffTag.textContent = this.game.difficulty.name;
+      this.elDiffTag.style.color = this.game.difficulty.badgeColor;
+      this.elDiffTag.style.borderColor = this.game.difficulty.badgeColor;
+      this.elDiffTag.style.boxShadow = `0 0 10px ${this.game.difficulty.badgeColor}33`;
+    }
 
     this.syncTowersDeckHighlight();
     this.updateSuperweapons();
@@ -373,7 +383,89 @@ export class UIManager {
     });
   }
 
+  renderDifficultySelector() {
+    if (!this.diffButtonsStrip || !this.diffIntelCard) return;
+
+    this.diffButtonsStrip.innerHTML = '';
+    const modes = Object.values(DIFFICULTY_MODES);
+
+    modes.forEach(mode => {
+      const isSelected = this.game.difficulty.id === mode.id;
+      const btn = document.createElement('button');
+      btn.className = `diff-mode-btn ${isSelected ? 'active' : ''}`;
+      btn.id = `diff-btn-${mode.id}`;
+      btn.style.setProperty('--diff-color', mode.badgeColor);
+
+      const hpTag = mode.hpMult === 1 ? '1.0x HP' : `+${Math.round((mode.hpMult - 1) * 100)}% HP`;
+
+      btn.innerHTML = `
+        <span class="diff-btn-name" style="color: ${mode.badgeColor};">${mode.name}</span>
+        <span class="diff-btn-tag">${hpTag}</span>
+      `;
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.game.setDifficulty(mode.id);
+        this.renderDifficultySelector();
+        this.updateHUD();
+        this.renderSectorsModal();
+      });
+
+      this.diffButtonsStrip.appendChild(btn);
+    });
+
+    const cur = this.game.difficulty;
+    const hpStr = cur.hpMult === 1 ? '1.0x (Baseline)' : `+${Math.round((cur.hpMult - 1) * 100)}%`;
+    const speedStr = cur.speedMult === 1 ? '1.0x' : `+${Math.round((cur.speedMult - 1) * 100)}%`;
+    const bountyStr = `${Math.round(cur.bountyMult * 100)}%`;
+    const scoreStr = `${cur.scoreMult}x`;
+
+    this.diffIntelCard.innerHTML = `
+      <div class="diff-intel-header">
+        <span class="diff-intel-title" style="color: ${cur.badgeColor}">
+          THREAT PROTOCOL: ${cur.name}
+        </span>
+        <span class="diff-intel-tagline">${cur.tagline}</span>
+      </div>
+      <div class="diff-stat-chips">
+        <div class="diff-chip">
+          <span class="dc-icon">🩸</span>
+          <span class="dc-label">ENEMY HP</span>
+          <span class="dc-val" style="color: ${cur.badgeColor}">${hpStr}</span>
+        </div>
+        <div class="diff-chip">
+          <span class="dc-icon">⚡</span>
+          <span class="dc-label">SPEED</span>
+          <span class="dc-val">${speedStr}</span>
+        </div>
+        <div class="diff-chip">
+          <span class="dc-icon">💰</span>
+          <span class="dc-label">BOUNTIES</span>
+          <span class="dc-val">${bountyStr}</span>
+        </div>
+        <div class="diff-chip">
+          <span class="dc-icon">🛡️</span>
+          <span class="dc-label">CORE LIVES</span>
+          <span class="dc-val">${cur.lives} HP</span>
+        </div>
+        <div class="diff-chip">
+          <span class="dc-icon">🔋</span>
+          <span class="dc-label">START CREDITS</span>
+          <span class="dc-val">${cur.startingCredits} ⚡</span>
+        </div>
+        <div class="diff-chip">
+          <span class="dc-icon">🏆</span>
+          <span class="dc-label">SCORE MULT</span>
+          <span class="dc-val" style="color: #ffd166">${scoreStr}</span>
+        </div>
+      </div>
+      <p class="diff-intel-desc">${cur.desc}</p>
+    `;
+  }
+
   renderSectorsModal() {
+    this.renderDifficultySelector();
+
     const container = document.getElementById('sectors-grid');
     if (!container) return;
     container.innerHTML = '';
@@ -381,8 +473,8 @@ export class UIManager {
     const subtitleEl = document.getElementById('map-select-subtitle');
     if (subtitleEl) {
       subtitleEl.textContent = this.game.hasStarted
-        ? 'Switch to another tactical battle sector at any time'
-        : 'Choose a combat sector to deploy defense protocol and begin';
+        ? `Threat: ${this.game.difficulty.name} (${this.game.difficulty.tagline}). Switch sector or threat level:`
+        : `Threat: ${this.game.difficulty.name} (${this.game.difficulty.tagline}). Choose combat sector to deploy:`;
     }
 
     const diffColors = {
@@ -433,7 +525,7 @@ export class UIManager {
         <p class="sector-desc">${map.description}</p>
         <div class="sector-card-footer">
           <button class="btn-select-sector ${isActive && this.game.hasStarted ? 'btn-active-sector' : ''}">
-            ${!this.game.hasStarted ? 'START MISSION ➔' : (isActive ? 'CURRENT SECTOR' : 'DEPLOY PROTOCOL')}
+            ${!this.game.hasStarted ? `DEPLOY [${this.game.difficulty.name}] ➔` : (isActive ? 'CURRENT SECTOR' : `DEPLOY [${this.game.difficulty.name}]`)}
           </button>
         </div>
       `;
@@ -443,7 +535,7 @@ export class UIManager {
 
       card.addEventListener('click', () => {
         const wasStarted = this.game.hasStarted;
-        this.game.startWithSector(map.id);
+        this.game.startWithSector(map.id, this.game.difficulty.id);
         this.modalMapSelect.classList.remove('active');
         if (!wasStarted) {
           this.game.audio.init();
@@ -472,16 +564,19 @@ export class UIManager {
     if (tab === 'towers') {
       container.innerHTML = `
         <div class="codex-section-grid">
-          ${Object.values(TOWER_TYPES).map(t => `
+          ${Object.values(TOWER_TYPES).map(t => {
+            const dps = Math.round((t.isBeam ? t.damage : (t.damage * (t.fireRate || 1))));
+            return `
             <div class="codex-entry">
               <span class="codex-icon">${t.icon}</span>
               <div class="codex-info">
                 <span class="codex-title">${t.name} (${t.cost} ⚡)</span>
+                <p class="codex-desc" style="color: #00f2fe; margin-bottom: 3px;">Damage: ${t.damage} | Range: ${t.range} | ${t.isBeam ? `Beam DPS: ${dps}` : `Rate: ${t.fireRate}/s (~${dps} DPS)`}</p>
                 <p class="codex-desc">${t.description}</p>
                 <p class="codex-desc" style="color: #ffd166; margin-top: 4px;">Upgrades: ${t.upgrades.map(u => u.tierName).join(' ➔ ')}</p>
               </div>
             </div>
-          `).join('')}
+          `}).join('')}
         </div>
       `;
     } else if (tab === 'enemies') {
@@ -492,9 +587,32 @@ export class UIManager {
               <span class="codex-icon">${e.icon}</span>
               <div class="codex-info">
                 <span class="codex-title">${e.name}</span>
-                <p class="codex-desc">Base HP: ${e.hp} | Armor: ${e.armor} | Speed: ${e.speed}x</p>
-                <p class="codex-desc" style="color: #a0f0ff;">${e.isBoss ? 'Colossal Boss unit with enraged phase below 50% HP!' : (e.shield ? 'Absorbs initial damage with kinetic forcefield.' : 'Standard combat threat.')}</p>
+                <p class="codex-desc" style="color: #00f2fe; margin-bottom: 3px;">Base HP: ${e.hp} | Shield: ${e.shield || 0} | Armor: ${e.armor} | Speed: ${e.speed}x | Bounty: ${e.bounty} ⚡</p>
+                <p class="codex-desc" style="color: #cbd5e1;">${e.isBoss ? 'Colossal Titan Boss unit with enraged phase and devastating core damage!' : (e.shield ? 'Kinetic energy shield absorbs incoming damage first.' : 'Standard combat threat.')}</p>
               </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else if (tab === 'difficulty') {
+      container.innerHTML = `
+        <div class="codex-diff-grid">
+          ${Object.values(DIFFICULTY_MODES).map(d => `
+            <div class="codex-diff-card" style="border-left: 4px solid ${d.badgeColor}">
+              <div class="codex-diff-header">
+                <span class="codex-diff-name" style="color: ${d.badgeColor}">${d.name}</span>
+                <span class="codex-diff-score">${d.scoreMult}x Score Multiplier</span>
+              </div>
+              <span class="codex-diff-tagline">${d.tagline}</span>
+              <div class="codex-diff-specs">
+                <div class="cd-spec"><span>Enemy HP:</span> <strong>${d.hpMult === 1 ? '1.0x (Base)' : `+${Math.round((d.hpMult - 1) * 100)}%`}</strong></div>
+                <div class="cd-spec"><span>Enemy Speed:</span> <strong>${d.speedMult === 1 ? '1.0x' : `+${Math.round((d.speedMult - 1) * 100)}%`}</strong></div>
+                <div class="cd-spec"><span>Bounty Drop:</span> <strong>${Math.round(d.bountyMult * 100)}%</strong></div>
+                <div class="cd-spec"><span>Core Lives:</span> <strong>${d.lives}</strong></div>
+                <div class="cd-spec"><span>Starting Supply:</span> <strong>${d.startingCredits} ⚡</strong></div>
+                <div class="cd-spec"><span>Wave Scale:</span> <strong>+${Math.round(d.waveScale * 100)}%/wave</strong></div>
+              </div>
+              <p class="codex-diff-desc">${d.desc}</p>
             </div>
           `).join('')}
         </div>
@@ -560,7 +678,6 @@ export class UIManager {
       btnBgm.classList.toggle('muted', !active);
     });
 
-    // Modals
     const openMapsHandler = () => {
       this.modalMapSelect.classList.add('active');
       this.renderSectorsModal();
@@ -568,8 +685,13 @@ export class UIManager {
     document.getElementById('btn-open-maps').addEventListener('click', openMapsHandler);
     if (this.elSectorName) {
       this.elSectorName.style.cursor = 'pointer';
-      this.elSectorName.title = 'Click to switch Sector / Map';
+      this.elSectorName.title = 'Click to switch Sector / Threat Level';
       this.elSectorName.addEventListener('click', openMapsHandler);
+    }
+    if (this.elDiffTag) {
+      this.elDiffTag.style.cursor = 'pointer';
+      this.elDiffTag.title = 'Click to switch Sector / Threat Level';
+      this.elDiffTag.addEventListener('click', openMapsHandler);
     }
 
     const closeMapsHandler = () => {
