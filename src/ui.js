@@ -1,6 +1,6 @@
 // HUD and Interactive UI Manager
 
-import { TOWER_TYPES, ENEMY_TYPES, SUPERWEAPONS } from './constants.js';
+import { TOWER_TYPES, ENEMY_TYPES, SUPERWEAPONS, CANVAS_WIDTH, CANVAS_HEIGHT, CELL_SIZE } from './constants.js';
 import { MAPS } from './maps.js';
 
 export class UIManager {
@@ -260,30 +260,170 @@ export class UIManager {
     }
   }
 
+  drawMiniMap(canvas, map) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const scaleX = w / CANVAS_WIDTH;
+    const scaleY = h / CANVAS_HEIGHT;
+
+    // Background fill
+    ctx.fillStyle = map.theme.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Grid lines
+    ctx.strokeStyle = map.theme.gridLine;
+    ctx.lineWidth = 0.5;
+    const stepX = (CELL_SIZE * scaleX) * 2;
+    const stepY = (CELL_SIZE * scaleY) * 2;
+    ctx.beginPath();
+    for (let x = 0; x < w; x += stepX) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+    }
+    for (let y = 0; y < h; y += stepY) {
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+    }
+    ctx.stroke();
+
+    // Road paths
+    map.paths.forEach(p => {
+      if (p.length < 2) return;
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Base track
+      ctx.strokeStyle = map.theme.roadFill;
+      ctx.lineWidth = CELL_SIZE * scaleX * 0.95;
+      ctx.beginPath();
+      ctx.moveTo(p[0].x * scaleX, p[0].y * scaleY);
+      for (let i = 1; i < p.length; i++) {
+        ctx.lineTo(p[i].x * scaleX, p[i].y * scaleY);
+      }
+      ctx.stroke();
+
+      // Neon center border
+      ctx.strokeStyle = map.theme.roadBorder;
+      ctx.lineWidth = 1.8;
+      ctx.shadowColor = map.theme.roadBorder;
+      ctx.shadowBlur = 6;
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Obstacles
+    if (map.obstacles) {
+      ctx.fillStyle = map.theme.obstacleColor;
+      ctx.strokeStyle = map.theme.roadBorder;
+      ctx.lineWidth = 0.8;
+      map.obstacles.forEach(obs => {
+        const ox = obs.col * CELL_SIZE * scaleX;
+        const oy = obs.row * CELL_SIZE * scaleY;
+        const ow = CELL_SIZE * scaleX;
+        const oh = CELL_SIZE * scaleY;
+        ctx.fillRect(ox + 1, oy + 1, ow - 2, oh - 2);
+        ctx.strokeRect(ox + 1, oy + 1, ow - 2, oh - 2);
+      });
+    }
+
+    // Spawners
+    map.paths.forEach(p => {
+      const start = p[0];
+      const sx = Math.min(w - 7, Math.max(7, start.x * scaleX));
+      const sy = Math.min(h - 7, Math.max(7, start.y * scaleY));
+      ctx.save();
+      ctx.fillStyle = map.theme.spawnerColor;
+      ctx.shadowColor = map.theme.spawnerColor;
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    // Core Generators
+    map.paths.forEach(p => {
+      const end = p[p.length - 1];
+      const ex = Math.min(w - 7, Math.max(7, end.x * scaleX));
+      const ey = Math.min(h - 7, Math.max(7, end.y * scaleY));
+      ctx.save();
+      ctx.fillStyle = map.theme.coreColor;
+      ctx.shadowColor = map.theme.coreColor;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
   renderSectorsModal() {
     const container = document.getElementById('sectors-grid');
     if (!container) return;
     container.innerHTML = '';
 
+    const diffColors = {
+      STANDARD: '#06d6a0',
+      ADVANCED: '#ffd166',
+      TACTICAL: '#00f2fe',
+      EXPERT: '#ff6b35',
+      ELITE: '#9d4edd',
+      MASTER: '#ff007f',
+      NIGHTMARE: '#ef476f'
+    };
+
     Object.values(MAPS).forEach(map => {
+      const isActive = this.game.currentMap.id === map.id;
       const card = document.createElement('div');
-      card.className = `sector-card ${this.game.currentMap.id === map.id ? 'active' : ''}`;
+      card.className = `sector-card ${isActive ? 'active' : ''}`;
       card.id = `sec-card-${map.id}`;
 
-      card.innerHTML = `
-        <div class="sector-thumb-box" style="background: ${map.theme.bg}; border-color: ${map.theme.roadBorder};">
-          <span style="font-family: Orbitron; font-size: 14px; color: ${map.theme.roadBorder}; font-weight: 700;">
-            ${map.name.split(':')[0]}
+      // Thumbnail with mini canvas
+      const thumbBox = document.createElement('div');
+      thumbBox.className = 'sector-thumb-box';
+      thumbBox.style.borderColor = map.theme.roadBorder;
+
+      const miniCanvas = document.createElement('canvas');
+      miniCanvas.className = 'sector-mini-canvas';
+      miniCanvas.width = 240;
+      miniCanvas.height = 110;
+      this.drawMiniMap(miniCanvas, map);
+      thumbBox.appendChild(miniCanvas);
+
+      const diffColor = diffColors[map.difficulty] || '#ffd166';
+
+      // Card Meta Body
+      const body = document.createElement('div');
+      body.className = 'sector-card-body';
+      body.innerHTML = `
+        <div class="sector-card-top">
+          <div class="sector-name">${map.name}</div>
+          <span class="sector-diff-badge" style="color: ${diffColor}; border-color: ${diffColor};">
+            ${map.difficulty}
           </span>
         </div>
-        <div class="sector-name">${map.name}</div>
-        <div class="sector-diff">DIFFICULTY: ${map.difficulty}</div>
+        <div class="sector-meta-chips">
+          <span class="sector-chip">LANES: ${map.paths.length}</span>
+          <span class="sector-chip">OBSTACLES: ${map.obstacles.length}</span>
+        </div>
+        <div class="sector-tagline">${map.tagline}</div>
         <p class="sector-desc">${map.description}</p>
+        <div class="sector-card-footer">
+          <button class="btn-select-sector ${isActive ? 'btn-active-sector' : ''}">
+            ${isActive ? 'CURRENT SECTOR' : 'DEPLOY PROTOCOL'}
+          </button>
+        </div>
       `;
+
+      card.appendChild(thumbBox);
+      card.appendChild(body);
 
       card.addEventListener('click', () => {
         this.game.selectSector(map.id);
         this.modalMapSelect.classList.remove('active');
+        this.updateHUD();
         this.renderSectorsModal();
       });
 
@@ -394,12 +534,25 @@ export class UIManager {
     });
 
     // Modals
-    document.getElementById('btn-open-maps').addEventListener('click', () => {
+    const openMapsHandler = () => {
       this.modalMapSelect.classList.add('active');
       this.renderSectorsModal();
-    });
+    };
+    document.getElementById('btn-open-maps').addEventListener('click', openMapsHandler);
+    if (this.elSectorName) {
+      this.elSectorName.style.cursor = 'pointer';
+      this.elSectorName.title = 'Click to switch Sector / Map';
+      this.elSectorName.addEventListener('click', openMapsHandler);
+    }
+
     document.getElementById('btn-close-maps').addEventListener('click', () => {
       this.modalMapSelect.classList.remove('active');
+    });
+
+    this.modalMapSelect.addEventListener('click', (e) => {
+      if (e.target === this.modalMapSelect) {
+        this.modalMapSelect.classList.remove('active');
+      }
     });
 
     document.getElementById('btn-open-codex').addEventListener('click', () => {
@@ -407,6 +560,11 @@ export class UIManager {
     });
     document.getElementById('btn-close-codex').addEventListener('click', () => {
       this.modalCodex.classList.remove('active');
+    });
+    this.modalCodex.addEventListener('click', (e) => {
+      if (e.target === this.modalCodex) {
+        this.modalCodex.classList.remove('active');
+      }
     });
 
     // Codex Tab switching
@@ -474,6 +632,8 @@ export class UIManager {
       const curIdx = mapKeys.indexOf(this.game.currentMap.id);
       const nextKey = mapKeys[(curIdx + 1) % mapKeys.length];
       this.game.selectSector(nextKey);
+      this.updateHUD();
+      this.renderSectorsModal();
     });
 
     document.getElementById('btn-gameover-restart').addEventListener('click', () => {
@@ -483,7 +643,7 @@ export class UIManager {
 
     document.getElementById('btn-gameover-change-sector').addEventListener('click', () => {
       this.modalGameOver.classList.remove('active');
-      this.modalMapSelect.classList.add('active');
+      openMapsHandler();
     });
 
     // Global Key Bindings
@@ -491,17 +651,28 @@ export class UIManager {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
 
       const key = e.key.toUpperCase();
+      if (key === 'ESCAPE') {
+        if (this.modalMapSelect.classList.contains('active')) {
+          this.modalMapSelect.classList.remove('active');
+          return;
+        }
+        if (this.modalCodex.classList.contains('active')) {
+          this.modalCodex.classList.remove('active');
+          return;
+        }
+        this.cancelPlacement();
+        this.game.activeAbilityMode = null;
+        this.game.selectedTower = null;
+        this.syncInspector();
+        return;
+      }
+
       if (key >= '1' && key <= '6') {
         const towerKeys = Object.keys(TOWER_TYPES);
         const idx = parseInt(key) - 1;
         if (towerKeys[idx]) {
           this.selectPlacementTower(towerKeys[idx]);
         }
-      } else if (key === 'ESCAPE') {
-        this.cancelPlacement();
-        this.game.activeAbilityMode = null;
-        this.game.selectedTower = null;
-        this.syncInspector();
       } else if (key === ' ') {
         e.preventDefault();
         btnPause.click();

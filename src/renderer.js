@@ -140,11 +140,16 @@ export class Renderer {
   }
 
   drawPortals(ctx, map) {
-    // Draw Spawners at start of each path
+    // Draw Spawners at start of each unique path
+    const drawnSpawners = new Set();
     map.paths.forEach(p => {
       const start = p[0];
-      const px = Math.max(20, start.x);
-      const py = start.y;
+      const spawnKey = `${Math.round(start.x)},${Math.round(start.y)}`;
+      if (drawnSpawners.has(spawnKey)) return;
+      drawnSpawners.add(spawnKey);
+
+      const px = Math.min(CANVAS_WIDTH - 24, Math.max(24, start.x));
+      const py = Math.min(CANVAS_HEIGHT - 24, Math.max(24, start.y));
 
       ctx.save();
       ctx.shadowBlur = 15;
@@ -167,38 +172,45 @@ export class Renderer {
       ctx.restore();
     });
 
-    // Draw Core Generator at end of path
-    const lastP = map.paths[0][map.paths[0].length - 1];
-    const endX = Math.min(CANVAS_WIDTH - 24, lastP.x);
-    const endY = lastP.y;
+    // Draw Core Generators at the end of each unique path
+    const drawnCores = new Set();
+    map.paths.forEach(p => {
+      const lastP = p[p.length - 1];
+      const endKey = `${Math.round(lastP.x)},${Math.round(lastP.y)}`;
+      if (drawnCores.has(endKey)) return;
+      drawnCores.add(endKey);
 
-    ctx.save();
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = map.theme.coreColor;
-    ctx.strokeStyle = map.theme.coreColor;
-    ctx.lineWidth = 3.5;
-    ctx.fillStyle = 'rgba(0, 242, 254, 0.25)';
+      const endX = Math.min(CANVAS_WIDTH - 24, Math.max(24, lastP.x));
+      const endY = Math.min(CANVAS_HEIGHT - 24, Math.max(24, lastP.y));
 
-    ctx.beginPath();
-    ctx.arc(endX, endY, 24, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+      ctx.save();
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = map.theme.coreColor;
+      ctx.strokeStyle = map.theme.coreColor;
+      ctx.lineWidth = 3.5;
+      ctx.fillStyle = 'rgba(0, 242, 254, 0.25)';
 
-    // Rotating Core Ring
-    ctx.save();
-    ctx.translate(endX, endY);
-    ctx.rotate(this.time * 1.5);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(-12, -12, 24, 24);
-    ctx.restore();
+      ctx.beginPath();
+      ctx.arc(endX, endY, 24, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 11px "Orbitron", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('CORE', endX, endY);
-    ctx.restore();
+      // Rotating Core Ring
+      ctx.save();
+      ctx.translate(endX, endY);
+      ctx.rotate(this.time * 1.5);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-12, -12, 24, 24);
+      ctx.restore();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px "Orbitron", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('CORE', endX, endY);
+      ctx.restore();
+    });
   }
 
   drawObstacles(ctx, map) {
