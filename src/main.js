@@ -45,6 +45,12 @@ function bootGame() {
 
   // Canvas Click
   canvas.addEventListener('click', (e) => {
+    if (!game.hasStarted) {
+      ui.modalMapSelect.classList.add('active');
+      ui.renderSectorsModal();
+      return;
+    }
+
     const coords = getCanvasCoords(e);
     const col = Math.floor(coords.x / CELL_SIZE);
     const row = Math.floor(coords.y / CELL_SIZE);

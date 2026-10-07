@@ -15,7 +15,7 @@ class SoundEngine {
   }
 
   init() {
-    if (this.ctx) return;
+    if (typeof window === 'undefined' || this.ctx) return;
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
     this.ctx = new AudioContext();
@@ -36,6 +36,7 @@ class SoundEngine {
   }
 
   ensureContext() {
+    if (typeof window === 'undefined') return;
     if (!this.ctx) {
       this.init();
     }

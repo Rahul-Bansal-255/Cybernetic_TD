@@ -37,6 +37,7 @@ export class GameEngine {
     // Simulation Speed & Flow
     this.speed = 1;
     this.isPaused = false;
+    this.hasStarted = false;
     this.isGameOver = false;
     this.isVictory = false;
 
@@ -74,6 +75,12 @@ export class GameEngine {
   }
 
   init(mapId = 'sector_alpha') {
+    this.selectSector(mapId);
+  }
+
+  startWithSector(mapId) {
+    this.hasStarted = true;
+    this.isPaused = false;
     this.selectSector(mapId);
   }
 
@@ -123,7 +130,7 @@ export class GameEngine {
   }
 
   update(dt) {
-    if (this.isPaused || this.isGameOver || this.isVictory) return;
+    if (!this.hasStarted || this.isPaused || this.isGameOver || this.isVictory) return;
 
     // Apply speed multiplier
     const effectiveDt = dt * this.speed;
@@ -428,6 +435,7 @@ export class GameEngine {
   }
 
   placeTower(col, row, typeKey) {
+    if (!this.hasStarted) return false;
     const proto = TOWER_TYPES[typeKey];
     if (!proto || this.credits < proto.cost || !this.isValidPlacement(col, row)) {
       this.audio.error();
@@ -467,6 +475,7 @@ export class GameEngine {
   // --- COMMANDER SUPERWEAPONS ---
 
   triggerSuperweapon(id) {
+    if (!this.hasStarted) return;
     const weapon = SUPERWEAPONS[id];
     if (!weapon || this.cooldowns[id] > 0) {
       this.audio.error();

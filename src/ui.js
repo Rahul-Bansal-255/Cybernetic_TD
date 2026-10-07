@@ -106,6 +106,12 @@ export class UIManager {
   }
 
   selectPlacementTower(key) {
+    if (!this.game.hasStarted) {
+      this.modalMapSelect.classList.add('active');
+      this.renderSectorsModal();
+      return;
+    }
+
     if (this.game.placementMode && this.game.selectedPlacementProto?.id === key) {
       // Toggle off
       this.cancelPlacement();
@@ -161,9 +167,9 @@ export class UIManager {
     const hpPct = Math.max(0, (this.game.lives / this.game.maxLives) * 100);
     this.elHpFill.style.width = `${hpPct}%`;
 
-    this.elWave.textContent = `${this.game.currentWave} / ${this.game.maxWaves}`;
+    this.elWave.textContent = this.game.hasStarted ? `${this.game.currentWave} / ${this.game.maxWaves}` : `0 / ${this.game.maxWaves}`;
     this.elScore.textContent = this.game.score.toLocaleString();
-    this.elSectorName.textContent = this.game.currentMap.name.toUpperCase();
+    this.elSectorName.textContent = this.game.hasStarted ? this.game.currentMap.name.toUpperCase() : 'SELECT SECTOR';
 
     this.syncTowersDeckHighlight();
     this.updateSuperweapons();
@@ -181,12 +187,20 @@ export class UIManager {
     this.cdStasis.style.transform = `scaleY(${cdStasisRatio})`;
     this.cdOverdrive.style.transform = `scaleY(${cdOverdriveRatio})`;
 
-    this.btnOrbital.disabled = this.game.cooldowns.orbital > 0;
-    this.btnStasis.disabled = this.game.cooldowns.stasis > 0;
-    this.btnOverdrive.disabled = this.game.cooldowns.overdrive > 0;
+    this.btnOrbital.disabled = !this.game.hasStarted || this.game.cooldowns.orbital > 0;
+    this.btnStasis.disabled = !this.game.hasStarted || this.game.cooldowns.stasis > 0;
+    this.btnOverdrive.disabled = !this.game.hasStarted || this.game.cooldowns.overdrive > 0;
   }
 
   updateWaveRadar() {
+    if (!this.game.hasStarted) {
+      this.waveBadge.textContent = 'STANDBY';
+      this.btnCallWave.disabled = true;
+      this.waveBonusTag.textContent = 'CHOOSE SECTOR';
+      this.waveIntelText.textContent = 'Combat system standby. Select a battle sector to initiate mission.';
+      return;
+    }
+
     const nextWaveNum = this.game.currentWave + 1;
     if (this.game.waveState === 'standby') {
       this.waveBadge.textContent = `NEXT: ${Math.ceil(this.game.waveDelayTimer)}s`;
@@ -364,6 +378,13 @@ export class UIManager {
     if (!container) return;
     container.innerHTML = '';
 
+    const subtitleEl = document.getElementById('map-select-subtitle');
+    if (subtitleEl) {
+      subtitleEl.textContent = this.game.hasStarted
+        ? 'Switch to another tactical battle sector at any time'
+        : 'Choose a combat sector to deploy defense protocol and begin';
+    }
+
     const diffColors = {
       STANDARD: '#06d6a0',
       ADVANCED: '#ffd166',
@@ -377,7 +398,7 @@ export class UIManager {
     Object.values(MAPS).forEach(map => {
       const isActive = this.game.currentMap.id === map.id;
       const card = document.createElement('div');
-      card.className = `sector-card ${isActive ? 'active' : ''}`;
+      card.className = `sector-card ${isActive && this.game.hasStarted ? 'active' : ''}`;
       card.id = `sec-card-${map.id}`;
 
       // Thumbnail with mini canvas
@@ -411,8 +432,8 @@ export class UIManager {
         <div class="sector-tagline">${map.tagline}</div>
         <p class="sector-desc">${map.description}</p>
         <div class="sector-card-footer">
-          <button class="btn-select-sector ${isActive ? 'btn-active-sector' : ''}">
-            ${isActive ? 'CURRENT SECTOR' : 'DEPLOY PROTOCOL'}
+          <button class="btn-select-sector ${isActive && this.game.hasStarted ? 'btn-active-sector' : ''}">
+            ${!this.game.hasStarted ? 'START MISSION ➔' : (isActive ? 'CURRENT SECTOR' : 'DEPLOY PROTOCOL')}
           </button>
         </div>
       `;
@@ -421,8 +442,14 @@ export class UIManager {
       card.appendChild(body);
 
       card.addEventListener('click', () => {
-        this.game.selectSector(map.id);
+        const wasStarted = this.game.hasStarted;
+        this.game.startWithSector(map.id);
         this.modalMapSelect.classList.remove('active');
+        if (!wasStarted) {
+          this.game.audio.init();
+          this.game.audio.towerPlace();
+          this.game.audio.startBgm();
+        }
         this.updateHUD();
         this.renderSectorsModal();
       });
@@ -493,12 +520,11 @@ export class UIManager {
   }
 
   setupEventListeners() {
-    // Start game button
+    // Start button on landing page transitions to Sector Selection!
     document.getElementById('btn-start-game').addEventListener('click', () => {
       this.modalStart.classList.remove('active');
-      this.game.audio.init();
-      this.game.audio.towerPlace();
-      this.game.audio.startBgm();
+      this.modalMapSelect.classList.add('active');
+      this.renderSectorsModal();
     });
 
     // Speed controls
@@ -515,6 +541,7 @@ export class UIManager {
     // Pause button
     const btnPause = document.getElementById('btn-pause');
     btnPause.addEventListener('click', () => {
+      if (!this.game.hasStarted) return;
       this.game.isPaused = !this.game.isPaused;
       btnPause.classList.toggle('paused', this.game.isPaused);
       btnPause.textContent = this.game.isPaused ? '▶' : '⏸';
@@ -545,13 +572,18 @@ export class UIManager {
       this.elSectorName.addEventListener('click', openMapsHandler);
     }
 
-    document.getElementById('btn-close-maps').addEventListener('click', () => {
+    const closeMapsHandler = () => {
       this.modalMapSelect.classList.remove('active');
-    });
+      if (!this.game.hasStarted) {
+        // Return to start page if player cancels without choosing a sector
+        this.modalStart.classList.add('active');
+      }
+    };
+    document.getElementById('btn-close-maps').addEventListener('click', closeMapsHandler);
 
     this.modalMapSelect.addEventListener('click', (e) => {
       if (e.target === this.modalMapSelect) {
-        this.modalMapSelect.classList.remove('active');
+        closeMapsHandler();
       }
     });
 
@@ -579,6 +611,7 @@ export class UIManager {
 
     // Call wave early
     this.btnCallWave.addEventListener('click', () => {
+      if (!this.game.hasStarted) return;
       this.game.callWaveEarly();
     });
 
@@ -623,7 +656,9 @@ export class UIManager {
     // Victory & Game Over handlers
     document.getElementById('btn-victory-restart').addEventListener('click', () => {
       this.modalVictory.classList.remove('active');
+      this.game.hasStarted = true;
       this.game.resetSector();
+      this.updateHUD();
     });
 
     document.getElementById('btn-victory-next-sector').addEventListener('click', () => {
@@ -631,14 +666,16 @@ export class UIManager {
       const mapKeys = Object.keys(MAPS);
       const curIdx = mapKeys.indexOf(this.game.currentMap.id);
       const nextKey = mapKeys[(curIdx + 1) % mapKeys.length];
-      this.game.selectSector(nextKey);
+      this.game.startWithSector(nextKey);
       this.updateHUD();
       this.renderSectorsModal();
     });
 
     document.getElementById('btn-gameover-restart').addEventListener('click', () => {
       this.modalGameOver.classList.remove('active');
+      this.game.hasStarted = true;
       this.game.resetSector();
+      this.updateHUD();
     });
 
     document.getElementById('btn-gameover-change-sector').addEventListener('click', () => {
@@ -653,7 +690,7 @@ export class UIManager {
       const key = e.key.toUpperCase();
       if (key === 'ESCAPE') {
         if (this.modalMapSelect.classList.contains('active')) {
-          this.modalMapSelect.classList.remove('active');
+          closeMapsHandler();
           return;
         }
         if (this.modalCodex.classList.contains('active')) {
@@ -666,6 +703,8 @@ export class UIManager {
         this.syncInspector();
         return;
       }
+
+      if (!this.game.hasStarted) return;
 
       if (key >= '1' && key <= '6') {
         const towerKeys = Object.keys(TOWER_TYPES);

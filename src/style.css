@@ -1043,6 +1043,15 @@ body::before {
   color: var(--neon-cyan);
 }
 
+.modal-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  display: block;
+  margin-top: 3px;
+}
+
 .modal-close-btn {
   background: transparent;
   border: none;
