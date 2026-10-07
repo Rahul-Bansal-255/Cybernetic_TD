@@ -126,6 +126,11 @@ export class UIManager {
     this.placementBanner.style.display = 'block';
     this.syncTowersDeckHighlight();
     this.syncInspector();
+
+    const activeCard = document.getElementById(`card-tower-${key}`);
+    if (activeCard) {
+      activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
   }
 
   cancelPlacement() {
@@ -134,6 +139,7 @@ export class UIManager {
     this.placementBanner.style.display = 'none';
     this.syncTowersDeckHighlight();
   }
+
 
   syncTowersDeckHighlight() {
     const cards = this.towersDeck.querySelectorAll('.tower-card');
@@ -442,6 +448,19 @@ export class UIManager {
         this.game.selectedTower.targetPriority = e.target.value;
       }
     });
+
+    // Horizontal wheel scrolling over build deck
+    if (this.towersDeck) {
+      this.towersDeck.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0) {
+          e.preventDefault();
+          this.towersDeck.scrollBy({
+            left: e.deltaY,
+            behavior: 'auto'
+          });
+        }
+      }, { passive: false });
+    }
 
     // Victory & Game Over handlers
     document.getElementById('btn-victory-restart').addEventListener('click', () => {
