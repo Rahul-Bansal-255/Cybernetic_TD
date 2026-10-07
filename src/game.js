@@ -14,7 +14,7 @@ export class GameEngine {
 
     // Map & Difficulty
     this.currentMap = MAPS.sector_alpha;
-    this.difficulty = DIFFICULTY_MODES.veteran;
+    this.difficulty = DIFFICULTY_MODES.cadet;
     this.towers = [];
     this.enemies = [];
     this.projectiles = [];
@@ -75,7 +75,7 @@ export class GameEngine {
     this.onBossKilled = null;
   }
 
-  init(mapId = 'sector_alpha', diffId = 'veteran') {
+  init(mapId = 'sector_alpha', diffId = 'cadet') {
     if (diffId && DIFFICULTY_MODES[diffId]) {
       this.difficulty = DIFFICULTY_MODES[diffId];
     }
@@ -270,10 +270,10 @@ export class GameEngine {
     this.waveDelayTimer = 8; // countdown to next wave
 
     // Rebalanced wave completion reward
-    const waveReward = Math.round(20 + this.currentWave * 4);
+    const waveReward = Math.round(35 + this.currentWave * 5);
     this.credits += waveReward;
     this.stats.creditsEarned += waveReward;
-    const waveScore = Math.round(250 * this.currentWave * (this.difficulty?.scoreMult ?? 1));
+    const waveScore = Math.round(200 * this.currentWave * (this.difficulty?.scoreMult ?? 1));
     this.score += waveScore;
 
     // Beacon tower bonus credits
@@ -303,44 +303,44 @@ export class GameEngine {
 
     if (isBossWave) {
       // Boss wave composition
-      const countRaiders = 4 + Math.floor(wave / 2);
+      const countRaiders = 2 + Math.floor(wave / 4);
       for (let i = 0; i < countRaiders; i++) {
-        queue.push({ type: 'raider', pathIndex: i % paths.length, delay: 0.6 });
+        queue.push({ type: 'raider', pathIndex: i % paths.length, delay: 1.0 });
       }
 
       // Colossal Titan Boss
-      queue.push({ type: 'titan', pathIndex: 0, delay: 1.5 });
+      queue.push({ type: 'titan', pathIndex: 0, delay: 2.0 });
 
-      for (let i = 0; i < 6; i++) {
-        queue.push({ type: 'speeder', pathIndex: i % paths.length, delay: 0.5 });
+      for (let i = 0; i < 4; i++) {
+        queue.push({ type: 'speeder', pathIndex: i % paths.length, delay: 1.0 });
       }
     } else {
       // Regular wave composition
       if (wave === 1) {
-        for (let i = 0; i < 10; i++) queue.push({ type: 'scout', pathIndex: 0, delay: 0.8 });
+        for (let i = 0; i < 5; i++) queue.push({ type: 'scout', pathIndex: 0, delay: 1.4 });
       } else if (wave === 2) {
-        for (let i = 0; i < 12; i++) queue.push({ type: 'scout', pathIndex: i % paths.length, delay: 0.7 });
-        for (let i = 0; i < 4; i++) queue.push({ type: 'raider', pathIndex: i % paths.length, delay: 0.9 });
+        for (let i = 0; i < 7; i++) queue.push({ type: 'scout', pathIndex: i % paths.length, delay: 1.2 });
+        for (let i = 0; i < 2; i++) queue.push({ type: 'raider', pathIndex: i % paths.length, delay: 1.5 });
       } else if (wave === 3) {
-        for (let i = 0; i < 8; i++) queue.push({ type: 'raider', pathIndex: i % paths.length, delay: 0.8 });
-        for (let i = 0; i < 2; i++) queue.push({ type: 'juggernaut', pathIndex: 0, delay: 1.4 });
+        for (let i = 0; i < 6; i++) queue.push({ type: 'raider', pathIndex: i % paths.length, delay: 1.2 });
+        for (let i = 0; i < 1; i++) queue.push({ type: 'juggernaut', pathIndex: 0, delay: 2.0 });
       } else if (wave === 4) {
-        for (let i = 0; i < 12; i++) queue.push({ type: 'speeder', pathIndex: i % paths.length, delay: 0.5 });
+        for (let i = 0; i < 8; i++) queue.push({ type: 'speeder', pathIndex: i % paths.length, delay: 1.0 });
       } else {
         // High wave dynamic composition
-        const totalUnits = 12 + wave * 2;
+        const totalUnits = 8 + wave;
         for (let i = 0; i < totalUnits; i++) {
           let type = 'scout';
           const r = Math.random();
-          if (r < 0.25) type = 'shielded';
-          else if (r < 0.45) type = 'juggernaut';
-          else if (r < 0.70) type = 'raider';
+          if (r < 0.20) type = 'shielded';
+          else if (r < 0.40) type = 'juggernaut';
+          else if (r < 0.65) type = 'raider';
           else if (r < 0.85) type = 'speeder';
 
           queue.push({
             type,
             pathIndex: i % paths.length,
-            delay: 0.4 + Math.random() * 0.4
+            delay: 0.8 + Math.random() * 0.4
           });
         }
       }
@@ -389,10 +389,12 @@ export class GameEngine {
     this.audio.error();
 
     // Trigger visual screen shake
-    const vp = document.getElementById('canvas-viewport');
-    if (vp) {
-      vp.classList.add('screen-shake');
-      setTimeout(() => vp.classList.remove('screen-shake'), 300);
+    if (typeof document !== 'undefined') {
+      const vp = document.getElementById('canvas-viewport');
+      if (vp) {
+        vp.classList.add('screen-shake');
+        setTimeout(() => vp.classList.remove('screen-shake'), 300);
+      }
     }
 
     if (this.lives <= 0 && !this.isGameOver) {
@@ -404,45 +406,49 @@ export class GameEngine {
     this.isGameOver = true;
     this.audio.defeat();
 
-    const statsEl = document.getElementById('gameover-stats');
-    if (statsEl) {
-      statsEl.innerHTML = `
-        <div class="stat-cell"><span class="sc-label">THREAT LEVEL</span><span class="sc-val" style="color: ${this.difficulty.badgeColor}">${this.difficulty.name}</span></div>
-        <div class="stat-cell"><span class="sc-label">WAVE REACHED</span><span class="sc-val">${this.currentWave} / ${this.maxWaves}</span></div>
-        <div class="stat-cell"><span class="sc-label">TOTAL SCORE</span><span class="sc-val">${this.score.toLocaleString()}</span></div>
-        <div class="stat-cell"><span class="sc-label">ENEMIES SLAIN</span><span class="sc-val">${this.stats.enemiesKilled}</span></div>
-        <div class="stat-cell"><span class="sc-label">TOWERS BUILT</span><span class="sc-val">${this.stats.towersBuilt}</span></div>
-      `;
-    }
+    if (typeof document !== 'undefined') {
+      const statsEl = document.getElementById('gameover-stats');
+      if (statsEl) {
+        statsEl.innerHTML = `
+          <div class="stat-cell"><span class="sc-label">THREAT LEVEL</span><span class="sc-val" style="color: ${this.difficulty.badgeColor}">${this.difficulty.name}</span></div>
+          <div class="stat-cell"><span class="sc-label">WAVE REACHED</span><span class="sc-val">${this.currentWave} / ${this.maxWaves}</span></div>
+          <div class="stat-cell"><span class="sc-label">TOTAL SCORE</span><span class="sc-val">${this.score.toLocaleString()}</span></div>
+          <div class="stat-cell"><span class="sc-label">ENEMIES SLAIN</span><span class="sc-val">${this.stats.enemiesKilled}</span></div>
+          <div class="stat-cell"><span class="sc-label">TOWERS BUILT</span><span class="sc-val">${this.stats.towersBuilt}</span></div>
+        `;
+      }
 
-    const modal = document.getElementById('modal-gameover');
-    if (modal) modal.classList.add('active');
+      const modal = document.getElementById('modal-gameover');
+      if (modal) modal.classList.add('active');
+    }
   }
 
   triggerVictory() {
     this.isVictory = true;
     this.audio.victory();
 
-    const statsEl = document.getElementById('victory-stats');
-    if (statsEl) {
-      statsEl.innerHTML = `
-        <div class="stat-cell"><span class="sc-label">THREAT LEVEL</span><span class="sc-val" style="color: ${this.difficulty.badgeColor}">${this.difficulty.name}</span></div>
-        <div class="stat-cell"><span class="sc-label">FINAL SCORE</span><span class="sc-val">${this.score.toLocaleString()}</span></div>
-        <div class="stat-cell"><span class="sc-label">CORE INTEGRITY</span><span class="sc-val">${this.lives} / ${this.maxLives}</span></div>
-        <div class="stat-cell"><span class="sc-label">ENEMIES SLAIN</span><span class="sc-val">${this.stats.enemiesKilled}</span></div>
-        <div class="stat-cell"><span class="sc-label">BOSSES DEFEATED</span><span class="sc-val">${this.stats.bossesDefeated}</span></div>
-      `;
+    if (typeof document !== 'undefined') {
+      const statsEl = document.getElementById('victory-stats');
+      if (statsEl) {
+        statsEl.innerHTML = `
+          <div class="stat-cell"><span class="sc-label">THREAT LEVEL</span><span class="sc-val" style="color: ${this.difficulty.badgeColor}">${this.difficulty.name}</span></div>
+          <div class="stat-cell"><span class="sc-label">FINAL SCORE</span><span class="sc-val">${this.score.toLocaleString()}</span></div>
+          <div class="stat-cell"><span class="sc-label">CORE INTEGRITY</span><span class="sc-val">${this.lives} / ${this.maxLives}</span></div>
+          <div class="stat-cell"><span class="sc-label">ENEMIES SLAIN</span><span class="sc-val">${this.stats.enemiesKilled}</span></div>
+          <div class="stat-cell"><span class="sc-label">BOSSES DEFEATED</span><span class="sc-val">${this.stats.bossesDefeated}</span></div>
+        `;
+      }
+
+      // Confetti fanfare
+      confetti({
+        particleCount: 150,
+        spread: 90,
+        origin: { y: 0.6 }
+      });
+
+      const modal = document.getElementById('modal-victory');
+      if (modal) modal.classList.add('active');
     }
-
-    // Confetti fanfare
-    confetti({
-      particleCount: 150,
-      spread: 90,
-      origin: { y: 0.6 }
-    });
-
-    const modal = document.getElementById('modal-victory');
-    if (modal) modal.classList.add('active');
   }
 
   // --- TOWER PLACEMENT & MODIFICATIONS ---
