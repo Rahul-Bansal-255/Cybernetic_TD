@@ -54,6 +54,9 @@ html, body {
   color: var(--text-main);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior: none;
 }
 
 /* Background Atmospheric Grid & Radial Lighting */
@@ -85,43 +88,65 @@ body::before {
    TOP HUD HEADER
    ============================================================ */
 .hud-top {
-  height: 64px;
+  height: 60px;
   background: var(--bg-panel);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 clamp(8px, 1.5vw, 18px);
   z-index: 10;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-sizing: border-box;
+  overflow: hidden;
+  gap: clamp(6px, 1.2vw, 14px);
 }
 
 .hud-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: clamp(6px, 1vw, 12px);
+  min-width: 0;
+  flex-shrink: 0;
 }
 
 .hud-logo {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-glow);
   box-shadow: var(--glow-cyan);
   object-fit: cover;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.hud-logo:hover {
+  transform: scale(1.05);
+  filter: brightness(1.2);
 }
 
 .hud-title-wrap {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .hud-title {
   font-family: var(--font-display);
-  font-size: 1.15rem;
-  letter-spacing: 2px;
+  font-size: clamp(0.85rem, 1.2vw, 1.1rem);
+  letter-spacing: clamp(1px, 0.2vw, 1.8px);
   font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   background: linear-gradient(135deg, #ffffff 30%, var(--neon-cyan) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -132,23 +157,28 @@ body::before {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 3px;
+  margin-top: 2px;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .hud-sector-tag {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   color: var(--neon-cyan);
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   font-weight: 600;
   cursor: pointer;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 4px;
   border: 1px solid rgba(0, 242, 254, 0.25);
   background: rgba(0, 242, 254, 0.06);
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
   display: inline-block;
-  width: fit-content;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
 }
 
 .hud-sector-tag:hover {
@@ -160,17 +190,19 @@ body::before {
 
 .hud-diff-tag {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 800;
-  letter-spacing: 1.5px;
-  padding: 2px 8px;
+  letter-spacing: 1px;
+  padding: 2px 7px;
   border-radius: 4px;
   border: 1px solid var(--neon-amber);
   color: var(--neon-amber);
   background: rgba(0, 0, 0, 0.45);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.15s ease, filter 0.15s ease;
   display: inline-block;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .hud-diff-tag:hover {
@@ -364,6 +396,7 @@ body::before {
   display: block;
   box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.8);
   cursor: crosshair;
+  touch-action: none;
 }
 
 /* Placement Instruction Banner */
@@ -372,18 +405,42 @@ body::before {
   top: 16px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(13, 20, 36, 0.92);
+  background: rgba(13, 20, 36, 0.94);
   border: 1px solid var(--neon-cyan);
   box-shadow: var(--glow-cyan);
   border-radius: var(--radius-md);
-  padding: 8px 18px;
+  padding: 8px 14px 8px 18px;
   font-family: var(--font-mono);
   font-size: 0.82rem;
   color: var(--neon-cyan);
   backdrop-filter: blur(8px);
-  pointer-events: none;
   animation: bannerPulse 1.8s infinite;
-  z-index: 5;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.banner-cancel-btn {
+  background: rgba(239, 71, 111, 0.25);
+  border: 1px solid var(--neon-crimson);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 1px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.banner-cancel-btn:hover,
+.banner-cancel-btn:active {
+  background: var(--neon-crimson);
+  box-shadow: 0 0 10px var(--neon-crimson);
 }
 
 @keyframes bannerPulse {
@@ -485,6 +542,198 @@ body::before {
   box-shadow: 0 0 10px #ff0055;
 }
 
+/* Mobile Floating Quick Action Dock */
+.mobile-quick-bar {
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  padding: 10px 12px;
+}
+
+.mobile-superweapons {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.mobile-power-btn {
+  background: rgba(10, 16, 29, 0.88);
+  border: 1px solid var(--border-glow);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), var(--glow-cyan);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #fff;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+  min-width: 58px;
+  min-height: 48px;
+  transition: all 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-power-btn:hover:not(:disabled),
+.mobile-power-btn:active:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: #fff;
+  background: rgba(22, 35, 62, 0.95);
+}
+
+.mobile-power-btn:disabled {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+
+.mobile-power-btn .mp-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.mobile-power-btn .mp-label {
+  font-family: var(--font-display);
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--neon-cyan);
+}
+
+.mobile-wave-pill {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(10, 16, 29, 0.88);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px 4px 10px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+}
+
+.mwp-status {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+}
+
+.mobile-call-wave-btn {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.3), rgba(79, 172, 254, 0.3));
+  border: 1px solid var(--neon-cyan);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-call-wave-btn:hover:not(:disabled),
+.mobile-call-wave-btn:active:not(:disabled) {
+  background: var(--neon-cyan);
+  color: #05070f;
+  box-shadow: var(--glow-cyan);
+}
+
+.mobile-call-wave-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.mwp-bonus {
+  font-family: var(--font-mono);
+  color: var(--neon-amber);
+  font-size: 0.62rem;
+}
+
+/* Sidebar Mobile Header & Backdrop */
+.sidebar-mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sm-title {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--neon-cyan);
+}
+
+.sidebar-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.sidebar-close-btn:hover,
+.sidebar-close-btn:active {
+  background: rgba(239, 71, 111, 0.25);
+  border-color: var(--neon-crimson);
+  color: var(--neon-crimson);
+}
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 5, 12, 0.72);
+  backdrop-filter: blur(5px);
+  z-index: 75;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.sidebar-backdrop.active {
+  display: block;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobile-tac-btn {
+  display: none;
+  background: rgba(0, 242, 254, 0.15) !important;
+  border-color: var(--neon-cyan) !important;
+  color: var(--neon-cyan) !important;
+  font-weight: 800;
+}
+
 /* ============================================================
    TACTICAL RIGHT SIDEBAR
    ============================================================ */
@@ -530,6 +779,35 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.inspector-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inspector-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.inspector-close-btn:hover,
+.inspector-close-btn:active {
+  background: rgba(239, 71, 111, 0.25);
+  border-color: var(--neon-crimson);
+  color: var(--neon-crimson);
 }
 
 .card-title {
@@ -1828,4 +2106,1350 @@ body::before {
   20%, 80% { transform: translate3d(4px, 1px, 0); }
   30%, 50%, 70% { transform: translate3d(-6px, -2px, 0); }
   40%, 60% { transform: translate3d(6px, 2px, 0); }
+}
+
+/* Mobile Floating Tower Sheet */
+.mobile-tower-sheet {
+  display: none;
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  max-width: 440px;
+  margin: 0 auto;
+  background: rgba(8, 14, 28, 0.96);
+  border: 1px solid var(--neon-cyan);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8), var(--glow-cyan);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 25;
+  backdrop-filter: blur(14px);
+  animation: sheetSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+
+.mts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0, 242, 254, 0.2);
+  padding-bottom: 5px;
+}
+
+.mts-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mts-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.mts-name-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.mts-name {
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #fff;
+}
+
+.mts-tier {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--neon-cyan);
+}
+
+.mts-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mts-select {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  width: auto;
+  max-width: 105px;
+}
+
+.mts-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.78rem;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.mts-close-btn:hover,
+.mts-close-btn:active {
+  background: rgba(239, 71, 111, 0.25);
+  border-color: var(--neon-crimson);
+  color: var(--neon-crimson);
+}
+
+.mts-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mts-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+.mts-stat {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  padding: 2px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.mts-label {
+  font-size: 0.52rem;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+}
+
+.mts-val {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.mts-val.highlight {
+  color: var(--neon-cyan);
+}
+
+.mts-actions-row {
+  display: flex;
+  gap: 8px;
+}
+
+.mts-btn-upgrade, .mts-btn-sell {
+  flex: 1;
+  padding: 5px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN SYSTEM: TABLET & MOBILE BREAKPOINTS
+   ============================================================ */
+
+/* 1. TABLETS AND COMPACT SCREENS (<= 1024px) */
+@media (max-width: 1024px) {
+  .hud-top {
+    height: 54px;
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .hud-title {
+    font-size: 0.95rem;
+    letter-spacing: 1.2px;
+  }
+
+  .stat-label {
+    display: none;
+  }
+
+  .score-pill {
+    display: none;
+  }
+
+  #btn-open-codex {
+    display: none;
+  }
+
+  .stat-pill {
+    padding: 4px 8px;
+    gap: 5px;
+  }
+
+  .stat-val {
+    font-size: 0.88rem;
+  }
+
+  .stat-icon {
+    font-size: 0.95rem;
+  }
+
+  .speed-btn {
+    padding: 3px 6px;
+    font-size: 0.7rem;
+  }
+
+  .icon-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 0.88rem;
+  }
+
+  .tactical-sidebar {
+    width: 280px;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .hud-bottom-build-bar {
+    height: 100px;
+    padding: 6px 14px;
+  }
+
+  .tower-card {
+    flex: 0 0 180px;
+    min-width: 180px;
+    height: 54px;
+    padding: 4px 8px;
+    gap: 8px;
+  }
+
+  .tower-icon-canvas {
+    width: 38px;
+    height: 38px;
+    font-size: 1.3rem;
+  }
+
+  .tower-name {
+    font-size: 0.68rem;
+  }
+
+  .tower-cost {
+    font-size: 0.76rem;
+  }
+
+  .modal-xl {
+    width: 95vw;
+  }
+
+  .sectors-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .diff-stat-chips {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 2. TABLET PORTRAIT AND MOBILE DEVICES (<= 860px) */
+@media (max-width: 860px) {
+  /* Give the canvas full width by making sidebar a slide-over drawer */
+  .tactical-sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(340px, 86vw);
+    height: 100%;
+    z-index: 100;
+    background: rgba(8, 14, 26, 0.96);
+    backdrop-filter: blur(20px);
+    border-left: 1px solid var(--border-glow);
+    box-shadow: -15px 0 40px rgba(0, 0, 0, 0.85);
+    transform: translateX(105%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 16px;
+  }
+
+  .tactical-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-mobile-header {
+    display: flex;
+  }
+
+  .mobile-tac-btn {
+    display: flex !important;
+  }
+
+  .mobile-quick-bar {
+    display: flex;
+  }
+
+  .hud-top {
+    height: 52px;
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .hud-brand {
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .hud-logo {
+    width: 32px;
+    height: 32px;
+  }
+
+  .hud-title {
+    max-width: 140px;
+    font-size: 0.88rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hud-sector-tag {
+    max-width: 100px;
+    font-size: 0.62rem;
+    padding: 2px 6px;
+  }
+
+  .hud-diff-tag {
+    font-size: 0.58rem;
+    padding: 2px 6px;
+  }
+
+  .score-pill {
+    display: none;
+  }
+
+  #btn-open-codex {
+    display: none; /* Accessible in tactical drawer */
+  }
+
+  #speed-4x {
+    display: block !important;
+  }
+
+  #btn-sound-toggle,
+  #btn-bgm-toggle {
+    display: flex !important;
+  }
+
+  #btn-open-maps {
+    display: flex !important;
+  }
+
+  .hud-stats-cluster {
+    gap: 6px;
+  }
+
+  .stat-pill {
+    padding: 4px 7px;
+    border-radius: var(--radius-sm);
+    gap: 5px;
+  }
+
+  .stat-label {
+    display: none;
+  }
+
+  .stat-val {
+    font-size: 0.82rem;
+  }
+
+  .stat-icon {
+    font-size: 0.88rem;
+  }
+
+  .speed-toggle-group {
+    padding: 2px;
+    gap: 1px;
+  }
+
+  .speed-btn {
+    padding: 3px 6px;
+    font-size: 0.68rem;
+  }
+
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.82rem;
+  }
+
+  .boss-health-bar {
+    width: 90%;
+    max-width: 440px;
+    top: 10px;
+    padding: 6px 12px;
+  }
+
+  .boss-title {
+    font-size: 0.72rem;
+  }
+}
+
+/* 3. MOBILE PHONES & COMPACT TABLETS (<= 750px) */
+@media (max-width: 750px) {
+  .hud-top {
+    height: 46px;
+    padding: 0 8px;
+    gap: 4px;
+    justify-content: space-between;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .hud-brand {
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  .hud-logo {
+    width: 26px;
+    height: 26px;
+  }
+
+  .hud-title {
+    display: none;
+  }
+
+  .hud-tags-row {
+    margin-top: 0;
+    gap: 3px;
+  }
+
+  .hud-sector-tag {
+    font-size: 0.58rem;
+    padding: 1px 5px;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hud-diff-tag {
+    font-size: 0.55rem;
+    padding: 1px 4px;
+  }
+
+  .hud-stats-cluster {
+    gap: 3px;
+    flex-shrink: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .stat-pill {
+    padding: 2px 5px;
+    gap: 3px;
+    border-radius: 4px;
+    min-width: 0;
+  }
+
+  .stat-icon {
+    font-size: 0.76rem;
+  }
+
+  .stat-val {
+    font-size: 0.74rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .hp-bar-micro {
+    display: none;
+  }
+
+  .score-pill {
+    display: none;
+  }
+
+  .hud-controls-cluster {
+    gap: 3px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .speed-toggle-group {
+    padding: 1px;
+    gap: 1px;
+  }
+
+  .speed-btn {
+    padding: 2px 4px;
+    font-size: 0.62rem;
+    min-width: 17px;
+  }
+
+  #speed-4x {
+    display: block !important;
+  }
+
+  .utility-btns {
+    gap: 2px;
+  }
+
+  .icon-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 0.78rem;
+    border-radius: 4px;
+  }
+
+  #btn-open-codex {
+    display: none;
+  }
+
+  #btn-sound-toggle,
+  #btn-bgm-toggle {
+    display: flex !important;
+  }
+
+  #btn-open-maps {
+    display: flex !important;
+  }
+
+  #btn-toggle-sidebar {
+    display: inline-flex !important;
+  }
+
+  /* Bottom Build Bar */
+  .hud-bottom-build-bar {
+    height: 86px;
+    padding: 4px 8px env(safe-area-inset-bottom, 4px);
+  }
+
+  .build-bar-header {
+    margin-bottom: 2px;
+  }
+
+  .build-bar-title {
+    font-size: 0.62rem;
+    letter-spacing: 1px;
+  }
+
+  .build-bar-shortcuts {
+    display: none;
+  }
+
+  .towers-deck {
+    height: 60px;
+    gap: 8px;
+    padding: 2px 2px 4px 2px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .tower-card {
+    flex: 0 0 145px;
+    min-width: 145px;
+    height: 50px;
+    padding: 4px 8px;
+    gap: 6px;
+    border-radius: var(--radius-sm);
+    scroll-snap-align: start;
+  }
+
+  .tower-card.selected {
+    box-shadow: 0 0 14px rgba(0, 242, 254, 0.6);
+  }
+
+  .tower-icon-canvas {
+    width: 32px;
+    height: 32px;
+    font-size: 1.15rem;
+  }
+
+  .tower-name {
+    font-size: 0.65rem;
+  }
+
+  .tower-cost {
+    font-size: 0.72rem;
+  }
+
+  .tower-tagline {
+    font-size: 0.55rem;
+  }
+
+  .tower-hotkey {
+    display: none;
+  }
+
+  /* Modals on Mobile */
+  .modal-dialog {
+    max-width: 96vw;
+    max-height: 92vh;
+    border-radius: var(--radius-md);
+  }
+
+  .modal-header {
+    padding: 10px 14px;
+  }
+
+  .modal-title {
+    font-size: 0.92rem;
+    letter-spacing: 1.5px;
+  }
+
+  .modal-subtitle {
+    font-size: 0.62rem;
+  }
+
+  /* Sector Modal on Mobile */
+  .difficulty-selection-panel {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  .diff-buttons-strip {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px;
+  }
+
+  .diff-mode-btn {
+    padding: 5px 6px;
+  }
+
+  .diff-btn-name {
+    font-size: 0.76rem;
+  }
+
+  .diff-btn-tag {
+    font-size: 0.6rem;
+  }
+
+  .diff-intel-card {
+    padding: 6px 8px;
+    gap: 5px;
+  }
+
+  .diff-intel-title {
+    font-size: 0.72rem;
+  }
+
+  .diff-intel-tagline {
+    font-size: 0.62rem;
+  }
+
+  .diff-stat-chips {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .diff-chip {
+    padding: 2px 3px;
+  }
+
+  .dc-label {
+    font-size: 0.5rem;
+  }
+
+  .dc-val {
+    font-size: 0.66rem;
+  }
+
+  .diff-intel-desc {
+    font-size: 0.65rem;
+    line-height: 1.25;
+  }
+
+  .sectors-grid {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px;
+    gap: 14px;
+    max-height: calc(88vh - 250px);
+    overflow-y: auto;
+  }
+
+  .sector-card {
+    min-height: fit-content;
+    height: auto;
+    flex-shrink: 0;
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .sector-thumb-box {
+    height: 95px;
+    min-height: 95px;
+    width: 100%;
+  }
+
+  .sector-name {
+    font-size: 0.85rem;
+  }
+
+  .sector-tagline {
+    font-size: 0.65rem;
+  }
+
+  .sector-desc {
+    font-size: 0.7rem;
+  }
+
+  /* Start Dialog on Mobile */
+  .modal-start-dialog {
+    width: 94vw;
+    max-width: 440px;
+  }
+
+  .start-hero-image {
+    height: 140px;
+  }
+
+  .start-logo {
+    width: 68px;
+    height: 68px;
+  }
+
+  .start-body {
+    padding: 16px 18px;
+  }
+
+  .start-title {
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+  }
+
+  .start-subtitle {
+    font-size: 0.68rem;
+    margin-bottom: 8px;
+  }
+
+  .start-pitch {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    margin-bottom: 14px;
+  }
+
+  .start-features {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .feat-item {
+    padding: 6px 10px;
+    font-size: 0.74rem;
+  }
+
+  .btn-huge {
+    padding: 12px;
+    font-size: 0.88rem;
+    letter-spacing: 1.5px;
+  }
+
+  /* Codex on Mobile */
+  .codex-tabs {
+    padding: 0 10px;
+    overflow-x: auto;
+  }
+
+  .codex-tab-btn {
+    padding: 10px 12px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .codex-content {
+    padding: 14px;
+    max-height: 380px;
+  }
+
+  .codex-section-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .codex-diff-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* Victory and Defeat on Mobile */
+  .modal-victory-dialog,
+  .modal-defeat-dialog {
+    width: 92vw;
+    max-width: 420px;
+    padding: 20px 16px;
+  }
+
+  .victory-title,
+  .defeat-title {
+    font-size: 1.4rem;
+    letter-spacing: 1.5px;
+  }
+
+  .victory-desc,
+  .defeat-desc {
+    font-size: 0.78rem;
+    margin-bottom: 16px;
+  }
+
+  .stat-cell {
+    padding: 8px;
+  }
+
+  .sc-label {
+    font-size: 0.58rem;
+  }
+
+  .sc-val {
+    font-size: 1rem;
+  }
+}
+
+/* 4. SMARTPHONES & COMPACT SCREENS (<= 550px) */
+@media (max-width: 550px) {
+  .hud-top {
+    height: 44px;
+    padding: 0 6px env(safe-area-inset-right, 6px) 0 env(safe-area-inset-left, 6px);
+    gap: 3px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .hud-brand {
+    gap: 4px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .hud-logo {
+    width: 24px;
+    height: 24px;
+  }
+
+  .hud-title {
+    display: none;
+  }
+
+  .hud-sector-tag {
+    display: none; /* Hide sector title in compact top bar; tap logo/brand to switch */
+  }
+
+  .hud-diff-tag {
+    font-size: 0.52rem;
+    padding: 1px 3px;
+    letter-spacing: 0.3px;
+    border-radius: 3px;
+  }
+
+  .hud-stats-cluster {
+    gap: 2px;
+    flex-shrink: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .stat-pill {
+    padding: 2px 3px;
+    gap: 2px;
+    border-radius: 3px;
+    min-width: 0;
+  }
+
+  .stat-icon {
+    font-size: 0.68rem;
+  }
+
+  .stat-val {
+    font-size: 0.67rem;
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: -0.2px;
+  }
+
+  .hp-bar-micro {
+    display: none;
+  }
+
+  .score-pill {
+    display: none;
+  }
+
+  .hud-controls-cluster {
+    gap: 2px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .speed-toggle-group {
+    padding: 1px;
+    gap: 1px;
+    border-radius: 3px;
+  }
+
+  .speed-btn {
+    padding: 2px 3px;
+    min-width: 15px;
+    font-size: 0.58rem;
+    line-height: 1.2;
+  }
+
+  #speed-4x {
+    display: block !important;
+  }
+
+  .utility-btns {
+    gap: 2px;
+  }
+
+  .icon-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 0.72rem;
+    border-radius: 3px;
+  }
+
+  #btn-sound-toggle,
+  #btn-bgm-toggle {
+    display: flex !important;
+  }
+
+  #btn-open-maps {
+    display: none !important;
+  }
+
+  /* Placement Banner Non-Colliding Layout */
+  .placement-banner {
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100vw - 16px);
+    max-width: 420px;
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 25;
+    box-sizing: border-box;
+  }
+
+  body.placing-mode #mobile-wave-pill {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px);
+    transition: all 0.2s ease;
+  }
+
+  /* Floating Quick Bar & Superweapons */
+  .mobile-quick-bar {
+    padding: 6px 8px;
+  }
+
+  .mobile-superweapons {
+    bottom: 8px;
+    left: 8px;
+    gap: 5px;
+  }
+
+  .mobile-power-btn {
+    min-width: 50px;
+    min-height: 44px;
+    padding: 4px 6px;
+    gap: 1px;
+  }
+
+  .mobile-power-btn .mp-icon {
+    font-size: 0.95rem;
+  }
+
+  .mobile-power-btn .mp-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.4px;
+  }
+
+  .mobile-wave-pill {
+    top: 8px;
+    right: 8px;
+    padding: 3px 6px;
+    gap: 5px;
+  }
+
+  .mobile-wave-badge {
+    font-size: 0.58rem;
+  }
+
+  .mobile-call-wave-btn {
+    padding: 4px 6px;
+    font-size: 0.58rem;
+    gap: 3px;
+  }
+
+  /* Mobile Tower Inspector Bottom Sheet */
+  .mobile-tower-sheet {
+    bottom: 6px;
+    left: 6px;
+    right: 6px;
+    max-width: calc(100vw - 12px);
+    padding: 6px 10px;
+    gap: 5px;
+  }
+
+  .mts-header {
+    padding-bottom: 4px;
+  }
+
+  .mts-name {
+    font-size: 0.7rem;
+  }
+
+  .mts-tier {
+    font-size: 0.56rem;
+  }
+
+  .mts-select {
+    font-size: 0.6rem;
+    padding: 2px 4px;
+    max-width: 90px;
+  }
+
+  .mts-stats-row {
+    gap: 4px;
+  }
+
+  .mts-stat {
+    padding: 2px 3px;
+  }
+
+  .mts-stat-label {
+    font-size: 0.5rem;
+  }
+
+  .mts-stat-val {
+    font-size: 0.68rem;
+  }
+
+  .mts-actions-row {
+    gap: 6px;
+  }
+
+  .mts-btn {
+    padding: 6px 8px;
+    font-size: 0.68rem;
+    min-height: 36px;
+  }
+
+  /* Tactical Sidebar Drawer */
+  .tactical-sidebar {
+    width: min(320px, calc(100vw - 28px));
+    max-width: 100vw;
+  }
+
+  /* Bottom Constructors Deck */
+  .hud-bottom-build-bar {
+    height: 78px;
+    padding: 3px 6px env(safe-area-inset-bottom, 3px);
+  }
+
+  .build-bar-header {
+    margin-bottom: 2px;
+  }
+
+  .build-bar-title {
+    font-size: 0.58rem;
+  }
+
+  .towers-deck {
+    height: 54px;
+    gap: 6px;
+    padding: 2px 2px 3px;
+  }
+
+  .tower-card {
+    flex: 0 0 128px;
+    min-width: 128px;
+    height: 50px;
+    padding: 3px 5px;
+    gap: 5px;
+  }
+
+  .tower-card-icon {
+    font-size: 1rem;
+    width: 24px;
+    height: 24px;
+  }
+
+  .tower-name {
+    font-size: 0.62rem;
+  }
+
+  .tower-cost {
+    font-size: 0.66rem;
+  }
+
+  .tower-tagline {
+    font-size: 0.52rem;
+    max-width: 82px;
+  }
+
+  /* Sector Modal on <= 550px */
+  #modal-map-select .modal-dialog {
+    max-width: calc(100vw - 12px);
+    width: 100%;
+    max-height: 94vh;
+    margin: auto;
+  }
+
+  #modal-map-select .modal-body {
+    padding: 8px 8px 24px;
+    max-height: calc(94vh - 65px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .difficulty-selection-panel {
+    padding: 6px 8px;
+    gap: 5px;
+  }
+
+  .diff-buttons-strip {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+  }
+
+  .diff-mode-btn {
+    padding: 4px 5px;
+  }
+
+  .diff-btn-name {
+    font-size: 0.72rem;
+  }
+
+  .diff-btn-tag {
+    font-size: 0.55rem;
+  }
+
+  .diff-intel-chips {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+  }
+
+  .diff-chip {
+    padding: 2px 3px;
+  }
+
+  .dc-label {
+    font-size: 0.48rem;
+  }
+
+  .dc-val {
+    font-size: 0.62rem;
+  }
+
+  .sector-card {
+    margin-bottom: 10px;
+    padding: 8px;
+  }
+
+  .sector-thumb-box {
+    height: 90px;
+  }
+
+  .sector-mini-canvas {
+    height: 90px;
+  }
+
+  .btn-select-sector {
+    min-height: 40px;
+    font-size: 0.72rem;
+    padding: 8px 10px;
+    width: 100%;
+  }
+
+  /* Start Modal */
+  .modal-start-dialog {
+    max-width: calc(100vw - 16px);
+    width: 100%;
+    margin: auto;
+  }
+
+  .start-hero-image {
+    height: 120px;
+  }
+
+  .start-logo {
+    width: 52px;
+    height: 52px;
+  }
+
+  .start-body {
+    padding: 12px 14px 16px;
+    gap: 8px;
+  }
+
+  .start-title {
+    font-size: 1.15rem;
+  }
+
+  .start-pitch {
+    font-size: 0.68rem;
+  }
+
+  .sf-item {
+    padding: 4px 8px;
+    font-size: 0.66rem;
+  }
+
+  .btn-huge {
+    padding: 10px 14px;
+    font-size: 0.78rem;
+  }
+}
+
+/* 5. NARROW PHONES (<= 380px) */
+@media (max-width: 380px) {
+  .hud-top {
+    padding: 0 3px;
+    gap: 2px;
+  }
+
+  .hud-logo {
+    width: 20px;
+    height: 20px;
+  }
+
+  .hud-diff-tag {
+    display: none;
+  }
+
+  .stat-pill {
+    padding: 1px 2px;
+    gap: 1px;
+  }
+
+  .stat-val {
+    font-size: 0.62rem;
+  }
+
+  .stat-icon {
+    font-size: 0.64rem;
+  }
+
+  .speed-btn {
+    padding: 1px 2px;
+    min-width: 14px;
+    font-size: 0.54rem;
+  }
+
+  #speed-4x {
+    display: block !important;
+  }
+
+  .icon-btn {
+    width: 21px;
+    height: 21px;
+    font-size: 0.62rem;
+  }
+
+  #btn-sound-toggle,
+  #btn-bgm-toggle {
+    display: flex !important;
+  }
+
+  .tower-card {
+    flex: 0 0 120px;
+    min-width: 120px;
+  }
+
+  .tactical-sidebar {
+    width: calc(100vw - 20px);
+  }
+}
+
+/* 6. ULTRA-COMPACT PHONES (<= 330px) */
+@media (max-width: 330px) {
+  #btn-open-maps {
+    display: none; /* Logo is clickable to open maps */
+  }
+
+  .tower-card {
+    flex: 0 0 112px;
+    min-width: 112px;
+  }
+}
+
+/* 5. MOBILE LANDSCAPE ORIENTATION (Widescreen Phone Gaming) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hud-top {
+    height: 40px;
+    padding: 0 12px;
+  }
+
+  .hud-logo {
+    width: 26px;
+    height: 26px;
+  }
+
+  .hud-title {
+    font-size: 0.85rem;
+  }
+
+  .hud-bottom-build-bar {
+    height: 72px;
+    padding: 3px 12px;
+  }
+
+  .build-bar-header {
+    margin-bottom: 2px;
+  }
+
+  .towers-deck {
+    height: 50px;
+  }
+
+  .tower-card {
+    flex: 0 0 135px;
+    min-width: 135px;
+    height: 44px;
+    padding: 2px 6px;
+  }
+
+  .tower-icon-canvas {
+    width: 28px;
+    height: 28px;
+    font-size: 1rem;
+  }
+
+  .modal-dialog {
+    max-height: 94vh;
+  }
+
+  .start-hero-image {
+    height: 80px;
+  }
+
+  .start-body {
+    padding: 10px 14px;
+  }
+
+  .start-pitch {
+    display: none;
+  }
+
+  .sectors-grid {
+    grid-template-columns: repeat(2, 1fr);
+    max-height: calc(94vh - 180px);
+  }
+
+  .sector-thumb-box {
+    height: 75px;
+    min-height: 75px;
+  }
 }

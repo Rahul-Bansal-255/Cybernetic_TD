@@ -2,9 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>CYBER DEFENSE: AEGIS PROTOCOL | Sci-Fi Tower Defense</title>
-    <meta name="description" content="Cyberpunk Sci-Fi Tower Defense Web Game featuring dynamic tactical towers, commander superweapons, 3 unique sectors, and synth audio." />
+    <meta name="description" content="Cyberpunk Sci-Fi Tower Defense Web Game featuring dynamic tactical towers, commander superweapons, 7 unique sectors, and synth audio." />
+    <meta name="theme-color" content="#05070f" />
     <link rel="icon" type="image/jpeg" href="/logo.jpg" />
     
     <!-- Modern Futuristic Fonts -->
@@ -84,6 +85,7 @@
             <button class="icon-btn" id="btn-bgm-toggle" title="Toggle Synthwave Music">🎵</button>
             <button class="icon-btn" id="btn-open-codex" title="Tactical Database / Guide">📖</button>
             <button class="icon-btn" id="btn-open-maps" title="Select Sector / Map">🗺️</button>
+            <button class="icon-btn mobile-tac-btn" id="btn-toggle-sidebar" title="Open Tactical Command Drawer">⚡</button>
           </div>
         </div>
       </header>
@@ -95,9 +97,41 @@
         <div class="canvas-viewport" id="canvas-viewport">
           <canvas id="game-canvas"></canvas>
           
+          <!-- Mobile In-Game Quick Action Controls -->
+          <div class="mobile-quick-bar" id="mobile-quick-bar">
+            <!-- Mobile Superweapons -->
+            <div class="mobile-superweapons" id="mobile-superweapons">
+              <button class="mobile-power-btn" id="mobile-power-orbital" title="Orbital Beam [Q]">
+                <span class="mp-icon">🛰️</span>
+                <span class="mp-label">ORBITAL</span>
+                <div class="cooldown-overlay" id="mobile-cd-orbital"></div>
+              </button>
+              <button class="mobile-power-btn" id="mobile-power-stasis" title="Cryo Stasis [W]">
+                <span class="mp-icon">❄️</span>
+                <span class="mp-label">CRYO</span>
+                <div class="cooldown-overlay" id="mobile-cd-stasis"></div>
+              </button>
+              <button class="mobile-power-btn" id="mobile-power-overdrive" title="Overdrive [E]">
+                <span class="mp-icon">⚡</span>
+                <span class="mp-label">SURGE</span>
+                <div class="cooldown-overlay" id="mobile-cd-overdrive"></div>
+              </button>
+            </div>
+
+            <!-- Mobile Wave Early Call Pill -->
+            <div class="mobile-wave-pill" id="mobile-wave-pill">
+              <span class="mwp-status" id="mobile-wave-badge">NEXT: 10s</span>
+              <button class="mobile-call-wave-btn" id="mobile-btn-call-wave">
+                <span>CALL WAVE</span>
+                <span class="mwp-bonus" id="mobile-wave-bonus-tag">+25 ⚡</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Crosshair / Placement Warning Notice -->
           <div class="placement-banner" id="placement-banner" style="display: none;">
             <span id="placement-text">Click an empty grid tile to deploy tower. Press ESC to cancel.</span>
+            <button class="banner-cancel-btn" id="btn-cancel-placement">✕ CANCEL</button>
           </div>
 
           <!-- Wave Countdown / Boss Alert Banner -->
@@ -117,10 +151,59 @@
               <div class="boss-hp-fill" id="boss-hp-fill" style="width: 100%;"></div>
             </div>
           </div>
+
+          <!-- Mobile Floating Tower Inspector Sheet -->
+          <div class="mobile-tower-sheet" id="mobile-tower-sheet" style="display: none;">
+            <div class="mts-header">
+              <div class="mts-title-group">
+                <span class="mts-icon" id="mts-icon">🔫</span>
+                <div class="mts-name-wrap">
+                  <span class="mts-name" id="mts-name">PULSE BLASTER</span>
+                  <span class="mts-tier" id="mts-tier">TIER 1</span>
+                </div>
+              </div>
+              <div class="mts-controls-group">
+                <select id="mts-target-select" class="cyber-select mts-select" title="Target Priority">
+                  <option value="first">FIRST</option>
+                  <option value="last">LAST</option>
+                  <option value="strongest">STRONGEST</option>
+                  <option value="weakest">WEAKEST</option>
+                  <option value="closest">CLOSEST</option>
+                </select>
+                <button class="mts-close-btn" id="btn-close-mts" aria-label="Deselect Tower" title="Close">✕</button>
+              </div>
+            </div>
+            <div class="mts-body">
+              <div class="mts-stats-row">
+                <div class="mts-stat"><span class="mts-label">DMG</span><span class="mts-val" id="mts-damage">18</span></div>
+                <div class="mts-stat"><span class="mts-label">RATE</span><span class="mts-val" id="mts-rate">4.5/s</span></div>
+                <div class="mts-stat"><span class="mts-label">DPS</span><span class="mts-val highlight" id="mts-dps">81</span></div>
+                <div class="mts-stat"><span class="mts-label">KILLS</span><span class="mts-val" id="mts-kills">0</span></div>
+              </div>
+              <div class="mts-actions-row">
+                <button class="btn-upgrade mts-btn-upgrade" id="mts-btn-upgrade">
+                  <span class="btn-text">UPGRADE</span>
+                  <span class="btn-cost" id="mts-upgrade-cost">80 ⚡</span>
+                </button>
+                <button class="btn-sell mts-btn-sell" id="mts-btn-sell">
+                  <span class="btn-text">RECYCLE</span>
+                  <span class="btn-cost" id="mts-sell-refund">+59 ⚡</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
+        <!-- Backdrop for mobile drawer -->
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
         <!-- Right Side: Tactical Inspector & Abilities & Wave Intel -->
-        <aside class="tactical-sidebar">
+        <aside class="tactical-sidebar" id="tactical-sidebar">
+          
+          <div class="sidebar-mobile-header">
+            <span class="sm-title">⚡ TACTICAL COMMAND</span>
+            <button class="sidebar-close-btn" id="btn-close-sidebar" aria-label="Close Tactical Drawer">✕</button>
+          </div>
           
           <!-- Upcoming Wave Intel Banner -->
           <div class="intel-card">
@@ -190,7 +273,10 @@
           <div class="inspector-card" id="tower-inspector-card">
             <div class="card-header">
               <span class="card-title" id="inspector-tower-name">TOWER INSPECTOR</span>
-              <span class="badge" id="inspector-tower-tier">TIER 1</span>
+              <div class="inspector-header-right">
+                <span class="badge" id="inspector-tower-tier">TIER 1</span>
+                <button class="inspector-close-btn" id="btn-close-inspector" aria-label="Deselect Tower" title="Deselect Tower">✕</button>
+              </div>
             </div>
             <div id="inspector-empty-msg" class="empty-state-text">
               Select a deployed tower on the battlefield to inspect combat telemetry, modify targeting priority, upgrade weapons, or recycle for credits.

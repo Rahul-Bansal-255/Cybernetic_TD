@@ -67,12 +67,82 @@ export class UIManager {
     this.bossHpNums = document.getElementById('boss-hp-numbers');
     this.bossHpFill = document.getElementById('boss-hp-fill');
 
+    // Mobile & Tablet Drawer / Floating Controls
+    this.sidebar = document.getElementById('tactical-sidebar');
+    this.sidebarBackdrop = document.getElementById('sidebar-backdrop');
+    this.btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+    this.btnCloseSidebar = document.getElementById('btn-close-sidebar');
+    this.btnCloseInspector = document.getElementById('btn-close-inspector');
+    this.btnCancelPlacement = document.getElementById('btn-cancel-placement');
+
+    // Mobile Quick Superweapons
+    this.mobileBtnOrbital = document.getElementById('mobile-power-orbital');
+    this.mobileBtnStasis = document.getElementById('mobile-power-stasis');
+    this.mobileBtnOverdrive = document.getElementById('mobile-power-overdrive');
+    this.mobileCdOrbital = document.getElementById('mobile-cd-orbital');
+    this.mobileCdStasis = document.getElementById('mobile-cd-stasis');
+    this.mobileCdOverdrive = document.getElementById('mobile-cd-overdrive');
+
+    // Mobile Wave Call
+    this.mobileWaveBadge = document.getElementById('mobile-wave-badge');
+    this.mobileBtnCallWave = document.getElementById('mobile-btn-call-wave');
+    this.mobileWaveBonusTag = document.getElementById('mobile-wave-bonus-tag');
+
+    // Mobile Floating Tower Sheet
+    this.mobileTowerSheet = document.getElementById('mobile-tower-sheet');
+    this.mtsIcon = document.getElementById('mts-icon');
+    this.mtsName = document.getElementById('mts-name');
+    this.mtsTier = document.getElementById('mts-tier');
+    this.mtsTargetSelect = document.getElementById('mts-target-select');
+    this.btnCloseMts = document.getElementById('btn-close-mts');
+    this.mtsDamage = document.getElementById('mts-damage');
+    this.mtsRate = document.getElementById('mts-rate');
+    this.mtsDps = document.getElementById('mts-dps');
+    this.mtsKills = document.getElementById('mts-kills');
+    this.mtsBtnUpgrade = document.getElementById('mts-btn-upgrade');
+    this.mtsUpgradeCost = document.getElementById('mts-upgrade-cost');
+    this.mtsBtnSell = document.getElementById('mts-btn-sell');
+    this.mtsSellRefund = document.getElementById('mts-sell-refund');
+
     // Modals
     this.modalStart = document.getElementById('modal-start');
     this.modalMapSelect = document.getElementById('modal-map-select');
     this.modalCodex = document.getElementById('modal-codex');
     this.modalVictory = document.getElementById('modal-victory');
     this.modalGameOver = document.getElementById('modal-gameover');
+  }
+
+  openMobileSidebar() {
+    if (this.sidebar) this.sidebar.classList.add('mobile-open');
+    if (this.sidebarBackdrop) this.sidebarBackdrop.classList.add('active');
+  }
+
+  closeMobileSidebar() {
+    if (this.sidebar) this.sidebar.classList.remove('mobile-open');
+    if (this.sidebarBackdrop) this.sidebarBackdrop.classList.remove('active');
+  }
+
+  toggleMobileSidebar() {
+    if (this.sidebar && this.sidebar.classList.contains('mobile-open')) {
+      this.closeMobileSidebar();
+    } else {
+      this.openMobileSidebar();
+    }
+  }
+
+  openMobileInspector() {
+    if (this.mobileTowerSheet && window.innerWidth <= 860) {
+      this.mobileTowerSheet.style.display = 'flex';
+    }
+  }
+
+  closeMobileInspector() {
+    if (this.mobileTowerSheet) {
+      this.mobileTowerSheet.style.display = 'none';
+    }
+    if (this.inspCard) {
+      this.inspCard.classList.remove('mobile-sheet-open');
+    }
   }
 
   renderTowersDeck() {
@@ -132,7 +202,8 @@ export class UIManager {
     this.game.selectedTower = null;
     this.game.activeAbilityMode = null;
 
-    this.placementBanner.style.display = 'block';
+    this.placementBanner.style.display = 'flex';
+    document.body.classList.add('placing-mode');
     this.syncTowersDeckHighlight();
     this.syncInspector();
 
@@ -146,6 +217,7 @@ export class UIManager {
     this.game.placementMode = false;
     this.game.selectedPlacementProto = null;
     this.placementBanner.style.display = 'none';
+    document.body.classList.remove('placing-mode');
     this.syncTowersDeckHighlight();
   }
 
@@ -193,13 +265,26 @@ export class UIManager {
     const cdStasisRatio = this.game.cooldowns.stasis / SUPERWEAPONS.stasis.cooldown;
     const cdOverdriveRatio = this.game.cooldowns.overdrive / SUPERWEAPONS.overdrive.cooldown;
 
-    this.cdOrbital.style.transform = `scaleY(${cdOrbitalRatio})`;
-    this.cdStasis.style.transform = `scaleY(${cdStasisRatio})`;
-    this.cdOverdrive.style.transform = `scaleY(${cdOverdriveRatio})`;
+    if (this.cdOrbital) this.cdOrbital.style.transform = `scaleY(${cdOrbitalRatio})`;
+    if (this.cdStasis) this.cdStasis.style.transform = `scaleY(${cdStasisRatio})`;
+    if (this.cdOverdrive) this.cdOverdrive.style.transform = `scaleY(${cdOverdriveRatio})`;
 
-    this.btnOrbital.disabled = !this.game.hasStarted || this.game.cooldowns.orbital > 0;
-    this.btnStasis.disabled = !this.game.hasStarted || this.game.cooldowns.stasis > 0;
-    this.btnOverdrive.disabled = !this.game.hasStarted || this.game.cooldowns.overdrive > 0;
+    const canOrbital = this.game.hasStarted && this.game.cooldowns.orbital <= 0;
+    const canStasis = this.game.hasStarted && this.game.cooldowns.stasis <= 0;
+    const canOverdrive = this.game.hasStarted && this.game.cooldowns.overdrive <= 0;
+
+    if (this.btnOrbital) this.btnOrbital.disabled = !canOrbital;
+    if (this.btnStasis) this.btnStasis.disabled = !canStasis;
+    if (this.btnOverdrive) this.btnOverdrive.disabled = !canOverdrive;
+
+    // Mobile quick superweapon sync
+    if (this.mobileCdOrbital) this.mobileCdOrbital.style.transform = `scaleY(${cdOrbitalRatio})`;
+    if (this.mobileCdStasis) this.mobileCdStasis.style.transform = `scaleY(${cdStasisRatio})`;
+    if (this.mobileCdOverdrive) this.mobileCdOverdrive.style.transform = `scaleY(${cdOverdriveRatio})`;
+
+    if (this.mobileBtnOrbital) this.mobileBtnOrbital.disabled = !canOrbital;
+    if (this.mobileBtnStasis) this.mobileBtnStasis.disabled = !canStasis;
+    if (this.mobileBtnOverdrive) this.mobileBtnOverdrive.disabled = !canOverdrive;
   }
 
   updateWaveRadar() {
@@ -208,19 +293,33 @@ export class UIManager {
       this.btnCallWave.disabled = true;
       this.waveBonusTag.textContent = 'CHOOSE SECTOR';
       this.waveIntelText.textContent = 'Combat system standby. Select a battle sector to initiate mission.';
+
+      if (this.mobileWaveBadge) this.mobileWaveBadge.textContent = 'STANDBY';
+      if (this.mobileBtnCallWave) this.mobileBtnCallWave.disabled = true;
+      if (this.mobileWaveBonusTag) this.mobileWaveBonusTag.textContent = 'CHOOSE';
       return;
     }
 
     const nextWaveNum = this.game.currentWave + 1;
     if (this.game.waveState === 'standby') {
-      this.waveBadge.textContent = `NEXT: ${Math.ceil(this.game.waveDelayTimer)}s`;
-      this.btnCallWave.disabled = this.game.currentWave >= this.game.maxWaves;
+      const timeStr = `NEXT: ${Math.ceil(this.game.waveDelayTimer)}s`;
+      this.waveBadge.textContent = timeStr;
+      if (this.mobileWaveBadge) this.mobileWaveBadge.textContent = timeStr;
+
+      const canCall = this.game.currentWave < this.game.maxWaves;
+      this.btnCallWave.disabled = !canCall;
+      if (this.mobileBtnCallWave) this.mobileBtnCallWave.disabled = !canCall;
+
       const bonus = Math.round(20 + this.game.waveDelayTimer * 2);
       this.waveBonusTag.textContent = `+${bonus} ⚡ BONUS`;
+      if (this.mobileWaveBonusTag) this.mobileWaveBonusTag.textContent = `+${bonus} ⚡`;
     } else {
       this.waveBadge.textContent = 'HOSTILES ACTIVE';
+      if (this.mobileWaveBadge) this.mobileWaveBadge.textContent = `WAVE ${this.game.currentWave}`;
       this.btnCallWave.disabled = true;
+      if (this.mobileBtnCallWave) this.mobileBtnCallWave.disabled = true;
       this.waveBonusTag.textContent = 'COMBAT IN PROGRESS';
+      if (this.mobileWaveBonusTag) this.mobileWaveBonusTag.textContent = 'ACTIVE';
     }
 
     if (nextWaveNum % 5 === 0 && nextWaveNum <= this.game.maxWaves) {
@@ -235,6 +334,7 @@ export class UIManager {
   syncInspector() {
     const t = this.game.selectedTower;
     if (!t) {
+      this.closeMobileInspector();
       this.inspEmpty.style.display = 'block';
       this.inspContent.style.display = 'none';
       this.inspName.textContent = 'TOWER INSPECTOR';
@@ -275,6 +375,37 @@ export class UIManager {
     }
 
     this.sellRefundTag.textContent = `+${t.getRefund()} ⚡`;
+
+    // Sync Mobile Tower Sheet
+    if (this.mobileTowerSheet && window.innerWidth <= 860) {
+      this.mobileTowerSheet.style.display = 'flex';
+      if (this.mtsIcon) this.mtsIcon.textContent = t.proto.icon;
+      if (this.mtsName) this.mtsName.textContent = t.proto.name.toUpperCase();
+      if (this.mtsTier) this.mtsTier.textContent = `T${t.tier}: ${t.tierName}`;
+      if (this.mtsTargetSelect) this.mtsTargetSelect.value = t.targetPriority;
+
+      if (t.proto.isSupport) {
+        if (this.mtsDamage) this.mtsDamage.textContent = 'AURA';
+        if (this.mtsRate) this.mtsRate.textContent = `+${Math.round((t.proto.buffSpeed || 0) * 100)}%`;
+        if (this.mtsDps) this.mtsDps.textContent = `+${t.proto.bonusCreditsWave || 0}⚡`;
+      } else {
+        if (this.mtsDamage) this.mtsDamage.textContent = t.effectiveDamage;
+        if (this.mtsRate) this.mtsRate.textContent = `${t.effectiveFireRate.toFixed(1)}/s`;
+        if (this.mtsDps) this.mtsDps.textContent = t.dps;
+      }
+      if (this.mtsKills) this.mtsKills.textContent = t.kills;
+
+      if (this.mtsBtnUpgrade) {
+        if (nextUp) {
+          this.mtsBtnUpgrade.disabled = this.game.credits < nextUp.cost;
+          if (this.mtsUpgradeCost) this.mtsUpgradeCost.textContent = `${nextUp.cost} ⚡`;
+        } else {
+          this.mtsBtnUpgrade.disabled = true;
+          if (this.mtsUpgradeCost) this.mtsUpgradeCost.textContent = 'MAX';
+        }
+      }
+      if (this.mtsSellRefund) this.mtsSellRefund.textContent = `+${t.getRefund()} ⚡`;
+    }
   }
 
   updateBossBar() {
@@ -698,6 +829,18 @@ export class UIManager {
       this.renderSectorsModal();
     };
     document.getElementById('btn-open-maps').addEventListener('click', openMapsHandler);
+    const hudLogo = document.querySelector('.hud-logo');
+    if (hudLogo) {
+      hudLogo.style.cursor = 'pointer';
+      hudLogo.title = 'Switch Sector / Threat Level';
+      hudLogo.addEventListener('click', openMapsHandler);
+    }
+    const hudBrand = document.querySelector('.hud-brand');
+    if (hudBrand) {
+      hudBrand.style.cursor = 'pointer';
+      hudBrand.title = 'Switch Sector / Threat Level';
+      hudBrand.addEventListener('click', openMapsHandler);
+    }
     if (this.elSectorName) {
       this.elSectorName.style.cursor = 'pointer';
       this.elSectorName.title = 'Click to switch Sector / Threat Level';
@@ -757,9 +900,103 @@ export class UIManager {
     this.btnStasis.addEventListener('click', () => this.game.triggerSuperweapon('stasis'));
     this.btnOverdrive.addEventListener('click', () => this.game.triggerSuperweapon('overdrive'));
 
+    // Mobile Quick Superweapons & Wave Calling
+    if (this.mobileBtnOrbital) {
+      this.mobileBtnOrbital.addEventListener('click', () => {
+        if (navigator.vibrate) navigator.vibrate(25);
+        this.game.triggerSuperweapon('orbital');
+      });
+    }
+    if (this.mobileBtnStasis) {
+      this.mobileBtnStasis.addEventListener('click', () => {
+        if (navigator.vibrate) navigator.vibrate(25);
+        this.game.triggerSuperweapon('stasis');
+      });
+    }
+    if (this.mobileBtnOverdrive) {
+      this.mobileBtnOverdrive.addEventListener('click', () => {
+        if (navigator.vibrate) navigator.vibrate(25);
+        this.game.triggerSuperweapon('overdrive');
+      });
+    }
+    if (this.mobileBtnCallWave) {
+      this.mobileBtnCallWave.addEventListener('click', () => {
+        if (!this.game.hasStarted) return;
+        if (navigator.vibrate) navigator.vibrate(15);
+        this.game.callWaveEarly();
+      });
+    }
+
+    // Mobile Drawer & Inspector Toggles
+    if (this.btnToggleSidebar) {
+      this.btnToggleSidebar.addEventListener('click', () => this.toggleMobileSidebar());
+    }
+    if (this.btnCloseSidebar) {
+      this.btnCloseSidebar.addEventListener('click', () => this.closeMobileSidebar());
+    }
+    if (this.sidebarBackdrop) {
+      this.sidebarBackdrop.addEventListener('click', () => {
+        this.closeMobileSidebar();
+        this.closeMobileInspector();
+      });
+    }
+    if (this.btnCloseInspector) {
+      this.btnCloseInspector.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.game.selectedTower = null;
+        this.closeMobileInspector();
+        this.syncInspector();
+      });
+    }
+    if (this.btnCancelPlacement) {
+      this.btnCancelPlacement.addEventListener('click', () => {
+        this.cancelPlacement();
+      });
+    }
+
+    // Mobile Tower Sheet Listeners
+    if (this.btnCloseMts) {
+      this.btnCloseMts.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.game.selectedTower = null;
+        this.closeMobileInspector();
+        this.syncInspector();
+      });
+    }
+
+    if (this.mtsBtnUpgrade) {
+      this.mtsBtnUpgrade.addEventListener('click', () => {
+        if (this.game.selectedTower) {
+          if (navigator.vibrate) navigator.vibrate(20);
+          this.game.selectedTower.upgrade(this.game);
+          this.syncInspector();
+        }
+      });
+    }
+
+    if (this.mtsBtnSell) {
+      this.mtsBtnSell.addEventListener('click', () => {
+        if (this.game.selectedTower) {
+          if (navigator.vibrate) navigator.vibrate(25);
+          this.game.sellTower(this.game.selectedTower);
+          this.closeMobileInspector();
+        }
+      });
+    }
+
+    if (this.mtsTargetSelect) {
+      this.mtsTargetSelect.addEventListener('change', (e) => {
+        if (this.game.selectedTower) {
+          this.game.selectedTower.targetPriority = e.target.value;
+          this.inspTargetSelect.value = e.target.value;
+        }
+      });
+    }
+
     // Inspector Actions
     this.btnUpgrade.addEventListener('click', () => {
       if (this.game.selectedTower) {
+        if (navigator.vibrate) navigator.vibrate(20);
         this.game.selectedTower.upgrade(this.game);
         this.syncInspector();
       }
@@ -767,6 +1004,7 @@ export class UIManager {
 
     this.btnSell.addEventListener('click', () => {
       if (this.game.selectedTower) {
+        if (navigator.vibrate) navigator.vibrate(25);
         this.game.sellTower(this.game.selectedTower);
       }
     });
