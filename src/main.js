@@ -57,7 +57,7 @@ function bootGame() {
     game.hoverTile = null;
   }
 
-  function handleCanvasAction(coords, isShift = false) {
+  function handleCanvasAction(coords, isShift = false, isTouch = false) {
     if (!game.hasStarted) {
       ui.modalMapSelect.classList.add('active');
       ui.renderSectorsModal();
@@ -80,8 +80,7 @@ function bootGame() {
       const success = game.placeTower(col, row, game.selectedPlacementProto.id);
       if (success) {
         if (navigator.vibrate) navigator.vibrate(20);
-        const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-        // On touch screens or if not holding shift or cannot afford another, cancel placement mode
+        // On touch input or if not holding shift or cannot afford another, cancel placement mode
         if (isTouch || !isShift || game.credits < game.selectedPlacementProto.cost) {
           ui.cancelPlacement();
         }
@@ -141,7 +140,7 @@ function bootGame() {
   canvas.addEventListener('touchend', (e) => {
     e.preventDefault();
     const coords = getCanvasCoords(e);
-    handleCanvasAction(coords, false);
+    handleCanvasAction(coords, false, true);
     handlePointerLeave();
   }, { passive: false });
 
@@ -180,6 +179,7 @@ function bootGame() {
 
   // Animation Frame Game Loop
   let lastTime = performance.now();
+  let idleHudTimer = 0;
   function gameLoop(currentTime) {
     const dt = Math.min(0.1, (currentTime - lastTime) / 1000);
     lastTime = currentTime;
@@ -187,6 +187,15 @@ function bootGame() {
     try {
       game.update(dt);
       renderer.render(dt);
+
+      // Keep the HUD fresh while the simulation is idle (paused, pre-start, or mission ended)
+      if (!game.hasStarted || game.isPaused || game.isGameOver || game.isVictory) {
+        idleHudTimer += dt;
+        if (idleHudTimer >= 0.1) {
+          idleHudTimer = 0;
+          ui.updateHUD();
+        }
+      }
     } catch (err) {
       console.error('Game tick error:', err);
     }

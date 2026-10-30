@@ -156,8 +156,8 @@ export class GameEngine {
   }
 
   // Multi-lane sectors grant extra starting supply to cover every breach
-  getStartingCredits(map = this.currentMap) {
-    return this.difficulty.startingCredits + (map.paths.length - 1) * ECONOMY.extraLaneCredits;
+  getStartingCredits(map = this.currentMap, difficulty = this.difficulty) {
+    return difficulty.startingCredits + (map.paths.length - 1) * ECONOMY.extraLaneCredits;
   }
 
   update(dt) {

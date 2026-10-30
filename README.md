@@ -151,7 +151,7 @@ Turrets that have not fired yet are recycled for a **100% refund**; afterwards s
 | **Cycle Targeting Priority** | Click Priority dropdown in Inspector (`First`, `Last`, `Strongest`, `Weakest`, `Closest`) |
 | **Call Wave Early** | Click `CALL WAVE EARLY` for bonus credits |
 | **Game Speed Toggle** | `1x`, `2x`, `4x` buttons in top HUD |
-| **Pause / Resume** | `Spacebar` or Pause button |
+| **Pause / Resume** | `Spacebar` or Pause button (opening the Codex or Sector menu, or switching tabs, pauses automatically) |
 | **Audio / BGM Toggle** | Audio & Music icons in top HUD |
 
 ---
@@ -201,6 +201,12 @@ Turrets that have not fired yet are recycled for a **100% refund**; afterwards s
    ```bash
    node scripts/capture_screenshots.js
    ```
+
+6. **Run the end-to-end test suite** ([Playwright](https://playwright.dev/), desktop + mobile touch):
+   ```bash
+   npm run test:e2e
+   ```
+   Tests start their own Vite server on port `5175` and use your installed Google Chrome. To use Playwright's bundled Chromium instead, run `npx playwright install chromium` and then `PW_CHANNEL= npm run test:e2e`.
 
 ---
 

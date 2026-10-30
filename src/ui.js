@@ -7,8 +7,11 @@ export class UIManager {
   constructor(game) {
     this.game = game;
     this.activeBoss = null;
+    this.selectedDiffId = game.difficulty.id;
+    this.modalAutoPaused = false;
     this.cacheDOMElements();
     this.renderTowersDeck();
+    this.renderSuperweaponLabels();
     this.renderSectorsModal();
     this.renderCodex();
     this.setupEventListeners();
@@ -176,6 +179,21 @@ export class UIManager {
       });
 
       this.towersDeck.appendChild(card);
+    });
+  }
+
+  renderSuperweaponLabels() {
+    const { orbital, stasis, overdrive } = SUPERWEAPONS;
+    const labels = [
+      [this.btnOrbital, orbital, `Orbital Bombardment (${orbital.key}): ${orbital.damage}+ damage strike on target area (scales with wave)`],
+      [this.btnStasis, stasis, `Cryo Stasis (${stasis.key}): Freezes all active hostiles for ${stasis.duration}s`],
+      [this.btnOverdrive, overdrive, `Overdrive Surge (${overdrive.key}): +100% attack speed to all towers for ${overdrive.duration}s`]
+    ];
+    labels.forEach(([btn, weapon, title]) => {
+      if (!btn) return;
+      btn.title = title;
+      const costEl = btn.querySelector('.power-cost');
+      if (costEl) costEl.textContent = `[${weapon.key}] ${weapon.cooldown}s CD`;
     });
   }
 
@@ -556,7 +574,7 @@ export class UIManager {
     const modes = Object.values(DIFFICULTY_MODES);
 
     modes.forEach(mode => {
-      const isSelected = this.game.difficulty.id === mode.id;
+      const isSelected = this.selectedDiffId === mode.id;
       const btn = document.createElement('button');
       btn.className = `diff-mode-btn ${isSelected ? 'active' : ''}`;
       btn.id = `diff-btn-${mode.id}`;
@@ -571,8 +589,11 @@ export class UIManager {
 
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.game.setDifficulty(mode.id);
-        this.renderDifficultySelector();
+        // Mid-mission the choice is only applied on deploy, so browsing never wipes progress
+        this.selectedDiffId = mode.id;
+        if (!this.game.hasStarted) {
+          this.game.setDifficulty(mode.id);
+        }
         this.updateHUD();
         this.renderSectorsModal();
       });
@@ -580,7 +601,7 @@ export class UIManager {
       this.diffButtonsStrip.appendChild(btn);
     });
 
-    const cur = this.game.difficulty;
+    const cur = DIFFICULTY_MODES[this.selectedDiffId];
     const hpStr = cur.hpMult === 1 ? '1.0x (Baseline)' : `+${Math.round((cur.hpMult - 1) * 100)}%`;
     const speedStr = cur.speedMult === 1 ? '1.0x' : `+${Math.round((cur.speedMult - 1) * 100)}%`;
     const bountyStr = `${Math.round(cur.bountyMult * 100)}%`;
@@ -636,11 +657,12 @@ export class UIManager {
     if (!container) return;
     container.innerHTML = '';
 
+    const selDiff = DIFFICULTY_MODES[this.selectedDiffId];
     const subtitleEl = document.getElementById('map-select-subtitle');
     if (subtitleEl) {
       subtitleEl.textContent = this.game.hasStarted
-        ? `Threat: ${this.game.difficulty.name} (${this.game.difficulty.tagline}). Switch sector or threat level:`
-        : `Threat: ${this.game.difficulty.name} (${this.game.difficulty.tagline}). Choose combat sector to deploy:`;
+        ? `Threat: ${selDiff.name} (${selDiff.tagline}). Mission paused. Switch sector or threat level:`
+        : `Threat: ${selDiff.name} (${selDiff.tagline}). Choose combat sector to deploy:`;
     }
 
     const diffColors = {
@@ -655,6 +677,8 @@ export class UIManager {
 
     Object.values(MAPS).forEach(map => {
       const isActive = this.game.currentMap.id === map.id;
+      const isCurrentMission = isActive && this.game.hasStarted && selDiff.id === this.game.difficulty.id
+        && !this.game.isGameOver && !this.game.isVictory;
       const card = document.createElement('div');
       card.className = `sector-card ${isActive && this.game.hasStarted ? 'active' : ''}`;
       card.id = `sec-card-${map.id}`;
@@ -686,13 +710,13 @@ export class UIManager {
         <div class="sector-meta-chips">
           <span class="sector-chip" title="${map.paths.length} hostile route corridor(s) advancing on your power core simultaneously">🛣️ LANES: ${map.paths.length}</span>
           <span class="sector-chip" title="${map.obstacles.length} natural terrain barricade(s) where turrets cannot be placed">🛑 OBSTACLES: ${map.obstacles.length}</span>
-          <span class="sector-chip" title="Starting supply on this sector (multi-lane sectors grant bonus credits)">🔋 ${this.game.getStartingCredits(map)} ⚡</span>
+          <span class="sector-chip" title="Starting supply on this sector (multi-lane sectors grant bonus credits)">🔋 ${this.game.getStartingCredits(map, selDiff)} ⚡</span>
         </div>
         <div class="sector-tagline">${map.tagline}</div>
         <p class="sector-desc">${map.description}</p>
         <div class="sector-card-footer">
-          <button class="btn-select-sector ${isActive && this.game.hasStarted ? 'btn-active-sector' : ''}">
-            ${!this.game.hasStarted ? `DEPLOY [${this.game.difficulty.name}] ➔` : (isActive ? 'CURRENT SECTOR' : `DEPLOY [${this.game.difficulty.name}]`)}
+          <button class="btn-select-sector ${isCurrentMission ? 'btn-active-sector' : ''}">
+            ${!this.game.hasStarted ? `DEPLOY [${selDiff.name}] ➔` : (isCurrentMission ? 'RESUME MISSION' : `DEPLOY [${selDiff.name}]`)}
           </button>
         </div>
       `;
@@ -701,9 +725,16 @@ export class UIManager {
       card.appendChild(body);
 
       card.addEventListener('click', () => {
+        if (isCurrentMission) {
+          this.closeMapSelect();
+          return;
+        }
         const wasStarted = this.game.hasStarted;
-        this.game.startWithSector(map.id, this.game.difficulty.id);
+        this.modalAutoPaused = false;
+        this.game.startWithSector(map.id, selDiff.id);
         this.modalMapSelect.classList.remove('active');
+        this.modalGameOver.classList.remove('active');
+        this.modalVictory.classList.remove('active');
         if (!wasStarted) {
           this.game.audio.init();
           this.game.audio.towerPlace();
@@ -861,10 +892,7 @@ export class UIManager {
       btnBgm.classList.toggle('muted', !active);
     });
 
-    const openMapsHandler = () => {
-      this.modalMapSelect.classList.add('active');
-      this.renderSectorsModal();
-    };
+    const openMapsHandler = () => this.openMapSelect();
     document.getElementById('btn-open-maps').addEventListener('click', openMapsHandler);
     const hudLogo = document.querySelector('.hud-logo');
     if (hudLogo) {
@@ -889,13 +917,7 @@ export class UIManager {
       this.elDiffTag.addEventListener('click', openMapsHandler);
     }
 
-    const closeMapsHandler = () => {
-      this.modalMapSelect.classList.remove('active');
-      if (!this.game.hasStarted) {
-        // Return to start page if player cancels without choosing a sector
-        this.modalStart.classList.add('active');
-      }
-    };
+    const closeMapsHandler = () => this.closeMapSelect();
     document.getElementById('btn-close-maps').addEventListener('click', closeMapsHandler);
 
     this.modalMapSelect.addEventListener('click', (e) => {
@@ -904,15 +926,19 @@ export class UIManager {
       }
     });
 
-    document.getElementById('btn-open-codex').addEventListener('click', () => {
-      this.modalCodex.classList.add('active');
-    });
-    document.getElementById('btn-close-codex').addEventListener('click', () => {
-      this.modalCodex.classList.remove('active');
-    });
+    document.getElementById('btn-open-codex').addEventListener('click', () => this.openCodex());
+    document.getElementById('btn-close-codex').addEventListener('click', () => this.closeCodex());
     this.modalCodex.addEventListener('click', (e) => {
       if (e.target === this.modalCodex) {
-        this.modalCodex.classList.remove('active');
+        this.closeCodex();
+      }
+    });
+
+    // Auto-pause when the tab is hidden so hostiles don't advance unattended
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.game.hasStarted && !this.game.isGameOver && !this.game.isVictory) {
+        this.game.isPaused = true;
+        this.syncPauseButton();
       }
     });
 
@@ -1098,6 +1124,8 @@ export class UIManager {
     // Global Key Bindings
     window.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      // Leave browser shortcuts (Cmd/Ctrl+S, Cmd+W, ...) alone and ignore auto-repeat
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
 
       const key = e.key.toUpperCase();
       if (key === 'ESCAPE') {
@@ -1106,7 +1134,7 @@ export class UIManager {
           return;
         }
         if (this.modalCodex.classList.contains('active')) {
-          this.modalCodex.classList.remove('active');
+          this.closeCodex();
           return;
         }
         this.cancelPlacement();
@@ -1116,7 +1144,7 @@ export class UIManager {
         return;
       }
 
-      if (!this.game.hasStarted) return;
+      if (!this.game.hasStarted || this.isBlockingModalOpen()) return;
 
       if (/^[1-9]$/.test(key)) {
         const towerKeys = Object.keys(TOWER_TYPES);
@@ -1139,6 +1167,58 @@ export class UIManager {
         this.btnSell.click();
       }
     });
+  }
+
+  isBlockingModalOpen() {
+    return [this.modalStart, this.modalMapSelect, this.modalCodex, this.modalVictory, this.modalGameOver]
+      .some(m => m && m.classList.contains('active'));
+  }
+
+  // Menus pause an active mission and resume it on close if they paused it
+  pauseForMenu() {
+    const g = this.game;
+    if (g.hasStarted && !g.isPaused && !g.isGameOver && !g.isVictory) {
+      g.isPaused = true;
+      this.modalAutoPaused = true;
+      this.syncPauseButton();
+    }
+  }
+
+  resumeFromMenu() {
+    if (!this.modalAutoPaused || this.isBlockingModalOpen()) return;
+    this.modalAutoPaused = false;
+    this.game.isPaused = false;
+    this.syncPauseButton();
+  }
+
+  openMapSelect() {
+    this.selectedDiffId = this.game.difficulty.id;
+    this.pauseForMenu();
+    this.modalMapSelect.classList.add('active');
+    this.renderSectorsModal();
+  }
+
+  closeMapSelect() {
+    this.modalMapSelect.classList.remove('active');
+    if (!this.game.hasStarted) {
+      // Return to start page if player cancels without choosing a sector
+      this.modalStart.classList.add('active');
+    } else if (this.game.isGameOver) {
+      this.modalGameOver.classList.add('active');
+    } else if (this.game.isVictory) {
+      this.modalVictory.classList.add('active');
+    }
+    this.resumeFromMenu();
+  }
+
+  openCodex() {
+    this.pauseForMenu();
+    this.modalCodex.classList.add('active');
+  }
+
+  closeCodex() {
+    this.modalCodex.classList.remove('active');
+    this.resumeFromMenu();
   }
 
   useSuperweapon(id) {
