@@ -28,7 +28,7 @@ function computePathCells(waypoints) {
   return cells;
 }
 
-export const MAPS = {
+const SECTORS = {
   sector_alpha: {
     id: 'sector_alpha',
     name: 'Sector Alpha: Neon Ridge',
@@ -72,7 +72,7 @@ export const MAPS = {
   sector_beta: {
     id: 'sector_beta',
     name: 'Sector Beta: Nexus Matrix',
-    difficulty: 'ADVANCED',
+    difficulty: 'EXPERT',
     tagline: 'Dual convergence assault lanes',
     description: 'Enemies infiltrate from both northern and southern breaches, converging at the Nexus Plaza before advancing on the reactor core.',
     theme: {
@@ -110,8 +110,8 @@ export const MAPS = {
       ]
     ],
     obstacles: [
-      { col: 8, row: 4, type: 'quantum' },
-      { col: 8, row: 10, type: 'quantum' },
+      { col: 6, row: 4, type: 'quantum' },
+      { col: 6, row: 10, type: 'quantum' },
       { col: 13, row: 4, type: 'relay' },
       { col: 13, row: 10, type: 'relay' },
       { col: 18, row: 6, type: 'server' },
@@ -122,7 +122,7 @@ export const MAPS = {
   sector_gamma: {
     id: 'sector_gamma',
     name: 'Sector Gamma: Magma Crucible',
-    difficulty: 'EXPERT',
+    difficulty: 'TACTICAL',
     tagline: 'High-speed gauntlet bordered by volcanic rifts',
     description: 'Volcanic vents accelerate hostiles along an intricate serpentine track. Demands razor-sharp positioning and heavy crowd control.',
     theme: {
@@ -163,7 +163,7 @@ export const MAPS = {
   sector_delta: {
     id: 'sector_delta',
     name: 'Sector Delta: Orbital Centrifuge',
-    difficulty: 'TACTICAL',
+    difficulty: 'ADVANCED',
     tagline: 'Concentric orbital spiral collapsing toward central core',
     description: 'A zero-gravity orbital fortress. Hostile strike wings penetrate the outer perimeter and spiral inwards through concentric defense rings toward the central reactor core.',
     theme: {
@@ -259,7 +259,7 @@ export const MAPS = {
   sector_zeta: {
     id: 'sector_zeta',
     name: 'Sector Zeta: Hyper-Grid Coliseum',
-    difficulty: 'MASTER',
+    difficulty: 'NIGHTMARE',
     tagline: 'Triple breach synchronized incursion across dynamic grid',
     description: 'Cyber-warfare mainframe grid. Hostile squadrons launch synchronized assaults from three breach vectors (North, Center, South), navigating rapid zig-zag switchbacks.',
     theme: {
@@ -316,9 +316,9 @@ export const MAPS = {
   sector_omega: {
     id: 'sector_omega',
     name: 'Sector Omega: Singularity Zero',
-    difficulty: 'NIGHTMARE',
+    difficulty: 'MASTER',
     tagline: 'Dual inverted criss-cross gauntlet over dark matter void',
-    description: 'The ultimate defensive crucible. Hostile formations charge along inverted criss-crossing helices through the dark matter rift, converging in dual killboxes that push defensive setups to the limit.',
+    description: 'A punishing defensive crucible. Hostile formations charge along inverted criss-crossing helices through the dark matter rift, converging in dual killboxes that push defensive setups to the limit.',
     theme: {
       bg: '#050d0a',
       gridLine: 'rgba(0, 255, 135, 0.08)',
@@ -363,6 +363,11 @@ export const MAPS = {
     ]
   }
 };
+
+// Sector progression order (easiest to hardest)
+const SECTOR_ORDER = ['sector_alpha', 'sector_delta', 'sector_gamma', 'sector_beta', 'sector_epsilon', 'sector_omega', 'sector_zeta'];
+
+export const MAPS = Object.fromEntries(SECTOR_ORDER.map(id => [id, SECTORS[id]]));
 
 // Precompute road cells and blocked sets for fast collision checking
 Object.values(MAPS).forEach(map => {

@@ -136,7 +136,7 @@ export class ParticleSystem {
     // Hard bounds to prevent unbounded accumulation
     if (this.particles.length > 80) this.particles.splice(0, this.particles.length - 80);
     if (this.texts.length > 20) this.texts.splice(0, this.texts.length - 20);
-    if (this.shockwaves.length > 6) this.shockwaves.splice(0, this.shockwaves.length - 6);
+    if (this.shockwaves.length > 12) this.shockwaves.splice(0, this.shockwaves.length - 12);
   }
 
   render(ctx) {

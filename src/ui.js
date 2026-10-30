@@ -110,6 +110,7 @@ export class UIManager {
     this.modalCodex = document.getElementById('modal-codex');
     this.modalVictory = document.getElementById('modal-victory');
     this.modalGameOver = document.getElementById('modal-gameover');
+    this.btnPause = document.getElementById('btn-pause');
   }
 
   openMobileSidebar() {
@@ -258,6 +259,7 @@ export class UIManager {
     this.updateWaveRadar();
     this.syncInspector();
     this.updateBossBar();
+    this.syncPauseButton();
   }
 
   updateSuperweapons() {
@@ -310,7 +312,7 @@ export class UIManager {
       this.btnCallWave.disabled = !canCall;
       if (this.mobileBtnCallWave) this.mobileBtnCallWave.disabled = !canCall;
 
-      const bonus = Math.round(20 + this.game.waveDelayTimer * 2);
+      const bonus = this.game.getEarlyCallBonus();
       this.waveBonusTag.textContent = `+${bonus} ⚡ BONUS`;
       if (this.mobileWaveBonusTag) this.mobileWaveBonusTag.textContent = `+${bonus} ⚡`;
     } else {
@@ -322,13 +324,30 @@ export class UIManager {
       if (this.mobileWaveBonusTag) this.mobileWaveBonusTag.textContent = 'ACTIVE';
     }
 
-    if (nextWaveNum % 5 === 0 && nextWaveNum <= this.game.maxWaves) {
-      this.waveIntelText.textContent = `CRITICAL THREAT: Wave ${nextWaveNum} features a Titan Class Dreadnought!`;
-    } else if (nextWaveNum <= this.game.maxWaves) {
-      this.waveIntelText.textContent = `Wave ${nextWaveNum} incursions approaching Sector perimeter.`;
-    } else {
+    // Preview the wave that is incoming (standby) or currently in progress
+    const previewWave = this.game.waveState === 'standby' ? nextWaveNum : this.game.currentWave;
+    if (previewWave > this.game.maxWaves) {
       this.waveIntelText.textContent = 'All sectors neutralized. Perimeter secure!';
+    } else if (previewWave % 5 === 0) {
+      this.waveIntelText.textContent = `CRITICAL THREAT: Wave ${previewWave} features Titan Class Dreadnoughts!`;
+    } else {
+      const label = this.game.getWaveLabel(previewWave);
+      this.waveIntelText.textContent = `Wave ${previewWave}: ${label} approaching Sector perimeter.`;
     }
+    this.renderWaveChips(previewWave);
+  }
+
+  renderWaveChips(wave) {
+    if (!this.waveChips) return;
+    const key = `${this.game.currentMap.id}|${this.game.difficulty.id}|${this.game.currentWave}|${wave}`;
+    if (this.waveChipsKey === key) return;
+    this.waveChipsKey = key;
+
+    const counts = this.game.getWaveComposition(wave);
+    this.waveChips.innerHTML = Object.entries(counts).map(([type, count]) => {
+      const e = ENEMY_TYPES[type];
+      return `<span class="enemy-chip" title="${e.name}" style="border-color: ${e.color}55;">${e.icon} <span style="color: ${e.color}">x${count}</span></span>`;
+    }).join('');
   }
 
   syncInspector() {
@@ -349,10 +368,15 @@ export class UIManager {
     this.inspTier.textContent = `TIER ${t.tier}: ${t.tierName}`;
 
     if (t.proto.isSupport) {
-      this.inspDamage.textContent = 'AURA';
-      this.inspRate.textContent = `+${Math.round((t.proto.buffSpeed || 0) * 100)}% SPD`;
+      this.inspDamage.textContent = t.auraDamage > 0 ? `+${Math.round(t.auraDamage * 100)}% DMG` : 'AURA';
+      this.inspRate.textContent = `+${Math.round(t.auraSpeed * 100)}% SPD`;
       this.inspRange.textContent = Math.round(t.effectiveRange);
-      this.inspDps.textContent = `+${t.proto.bonusCreditsWave || 0}⚡/w`;
+      this.inspDps.textContent = `+${t.bonusCreditsWave}⚡/w`;
+    } else if (t.proto.isBeam) {
+      this.inspDamage.textContent = `${Math.round(t.slowFactor * 100)}% SLOW`;
+      this.inspRate.textContent = t.beamChains > 0 ? `BEAM x${t.beamChains + 1}` : 'BEAM';
+      this.inspRange.textContent = Math.round(t.effectiveRange);
+      this.inspDps.textContent = t.dps;
     } else {
       this.inspDamage.textContent = t.effectiveDamage;
       this.inspRate.textContent = `${t.effectiveFireRate.toFixed(1)}/s`;
@@ -360,7 +384,7 @@ export class UIManager {
       this.inspDps.textContent = t.dps;
     }
     this.inspKills.textContent = t.kills;
-    this.inspTotalDmg.textContent = t.totalDamage.toLocaleString();
+    this.inspTotalDmg.textContent = Math.round(t.totalDamage).toLocaleString();
     this.inspTargetSelect.value = t.targetPriority;
 
     const nextUp = t.getNextUpgrade();
@@ -374,7 +398,7 @@ export class UIManager {
       this.btnUpgrade.title = 'Tower reached maximum combat tier!';
     }
 
-    this.sellRefundTag.textContent = `+${t.getRefund()} ⚡`;
+    this.sellRefundTag.textContent = t.hasFired ? `+${t.getRefund()} ⚡` : `+${t.getRefund()} ⚡ (FULL)`;
 
     // Sync Mobile Tower Sheet
     if (this.mobileTowerSheet && window.innerWidth <= 860) {
@@ -386,8 +410,12 @@ export class UIManager {
 
       if (t.proto.isSupport) {
         if (this.mtsDamage) this.mtsDamage.textContent = 'AURA';
-        if (this.mtsRate) this.mtsRate.textContent = `+${Math.round((t.proto.buffSpeed || 0) * 100)}%`;
-        if (this.mtsDps) this.mtsDps.textContent = `+${t.proto.bonusCreditsWave || 0}⚡`;
+        if (this.mtsRate) this.mtsRate.textContent = `+${Math.round(t.auraSpeed * 100)}%`;
+        if (this.mtsDps) this.mtsDps.textContent = `+${t.bonusCreditsWave}⚡`;
+      } else if (t.proto.isBeam) {
+        if (this.mtsDamage) this.mtsDamage.textContent = `${Math.round(t.slowFactor * 100)}%`;
+        if (this.mtsRate) this.mtsRate.textContent = 'BEAM';
+        if (this.mtsDps) this.mtsDps.textContent = t.dps;
       } else {
         if (this.mtsDamage) this.mtsDamage.textContent = t.effectiveDamage;
         if (this.mtsRate) this.mtsRate.textContent = `${t.effectiveFireRate.toFixed(1)}/s`;
@@ -658,6 +686,7 @@ export class UIManager {
         <div class="sector-meta-chips">
           <span class="sector-chip" title="${map.paths.length} hostile route corridor(s) advancing on your power core simultaneously">🛣️ LANES: ${map.paths.length}</span>
           <span class="sector-chip" title="${map.obstacles.length} natural terrain barricade(s) where turrets cannot be placed">🛑 OBSTACLES: ${map.obstacles.length}</span>
+          <span class="sector-chip" title="Starting supply on this sector (multi-lane sectors grant bonus credits)">🔋 ${this.game.getStartingCredits(map)} ⚡</span>
         </div>
         <div class="sector-tagline">${map.tagline}</div>
         <p class="sector-desc">${map.description}</p>
@@ -708,6 +737,8 @@ export class UIManager {
               statsLine = `Support Aura: +${Math.round((t.buffSpeed || 0) * 100)}% Speed | Range: ${t.range} | Income: +${t.bonusCreditsWave || 0} ⚡/wave`;
             } else if (t.isBeam) {
               statsLine = `Beam DPS: ${t.damage} | Range: ${t.range} | Slow: ${Math.round((t.slowFactor || 0.4) * 100)}%`;
+            } else if (t.shieldMult) {
+              statsLine = `Pulse Damage: ${t.damage} (all in range) | Range: ${t.range} | Rate: ${t.fireRate}/s | ${t.shieldMult}x vs Shields`;
             } else {
               const dps = Math.round(t.damage * (t.fireRate || 1));
               statsLine = `Damage: ${t.damage} | Range: ${t.range} | Rate: ${t.fireRate}/s (~${dps} DPS)`;
@@ -734,7 +765,7 @@ export class UIManager {
               <div class="codex-info">
                 <span class="codex-title">${e.name}</span>
                 <p class="codex-desc" style="color: #00f2fe; margin-bottom: 3px;">Base HP: ${e.hp} | Shield: ${e.shield || 0} | Armor: ${e.armor} | Speed: ${e.speed}x | Bounty: ${e.bounty} ⚡</p>
-                <p class="codex-desc" style="color: #cbd5e1;">${e.isBoss ? 'Colossal Titan Boss unit with enraged phase and devastating core damage!' : (e.shield ? 'Kinetic energy shield absorbs incoming damage first.' : 'Standard combat threat.')}</p>
+                <p class="codex-desc" style="color: #cbd5e1;">${e.isBoss ? 'Colossal Titan Boss. Enrages at 50% HP (+25% speed) and launches escort drones. Costs 5 core integrity on breach!' : (e.spawnsOnDeath ? `Releases ${e.spawnsOnDeath.count} Scout Drones when destroyed. Splash damage cleans up the swarm.` : (e.shield ? 'Energy shield absorbs incoming damage first. Ion Disruptors shred shields.' : (e.armor >= 10 ? 'Heavy plating reduces kinetic damage. Use energy weapons or armor-piercing rounds.' : 'Standard combat threat.')))}</p>
               </div>
             </div>
           `).join('')}
@@ -770,7 +801,13 @@ export class UIManager {
             <strong style="color: #00f2fe;">1. Choke Points & Splash Synergies:</strong> Place Cryo Emitters near sharp bends to cluster enemies, then bombard them with Plasma Mortars for devastating AoE splash damage!
           </div>
           <div style="background: rgba(18, 27, 48, 0.6); padding: 14px; border-radius: 8px; border-left: 3px solid #00ff87;">
-            <strong style="color: #00ff87;">2. Support Beacon Placement:</strong> Aegis Relays boost attack speed and generate 25-75 bonus credits per wave. Surround them with high-tier Railguns or Pulse Blasters!
+            <strong style="color: #00ff87;">2. Support Beacon Placement:</strong> Aegis Relays boost attack speed and range of nearby turrets and generate 25-50 bonus credits per wave. Surround them with high-tier Railguns or Pulse Blasters!
+          </div>
+          <div style="background: rgba(18, 27, 48, 0.6); padding: 14px; border-radius: 8px; border-left: 3px solid #5e7bff;">
+            <strong style="color: #5e7bff;">Counter the Threat:</strong> Ion Disruptors shatter Aegis Crusher shields, Railguns and energy weapons ignore armor, and Mortars clean up Hive Carrier swarms. Check the Wave Radar to see what is coming next.
+          </div>
+          <div style="background: rgba(18, 27, 48, 0.6); padding: 14px; border-radius: 8px; border-left: 3px solid #cbd5e1;">
+            <strong style="color: #cbd5e1;">Free Redeploy:</strong> Turrets that have not fired yet are recycled for a 100% refund, so you can reposition before the wave arrives.
           </div>
           <div style="background: rgba(18, 27, 48, 0.6); padding: 14px; border-radius: 8px; border-left: 3px solid #ff007f;">
             <strong style="color: #ff007f;">3. Commander Superweapons:</strong> Don't hesitate to deploy Orbital Strike [Q] or Cryo Stasis [W] when Titans or swarms break your frontline.
@@ -896,27 +933,27 @@ export class UIManager {
     });
 
     // Superweapons
-    this.btnOrbital.addEventListener('click', () => this.game.triggerSuperweapon('orbital'));
-    this.btnStasis.addEventListener('click', () => this.game.triggerSuperweapon('stasis'));
-    this.btnOverdrive.addEventListener('click', () => this.game.triggerSuperweapon('overdrive'));
+    this.btnOrbital.addEventListener('click', () => this.useSuperweapon('orbital'));
+    this.btnStasis.addEventListener('click', () => this.useSuperweapon('stasis'));
+    this.btnOverdrive.addEventListener('click', () => this.useSuperweapon('overdrive'));
 
     // Mobile Quick Superweapons & Wave Calling
     if (this.mobileBtnOrbital) {
       this.mobileBtnOrbital.addEventListener('click', () => {
         if (navigator.vibrate) navigator.vibrate(25);
-        this.game.triggerSuperweapon('orbital');
+        this.useSuperweapon('orbital');
       });
     }
     if (this.mobileBtnStasis) {
       this.mobileBtnStasis.addEventListener('click', () => {
         if (navigator.vibrate) navigator.vibrate(25);
-        this.game.triggerSuperweapon('stasis');
+        this.useSuperweapon('stasis');
       });
     }
     if (this.mobileBtnOverdrive) {
       this.mobileBtnOverdrive.addEventListener('click', () => {
         if (navigator.vibrate) navigator.vibrate(25);
-        this.game.triggerSuperweapon('overdrive');
+        this.useSuperweapon('overdrive');
       });
     }
     if (this.mobileBtnCallWave) {
@@ -1081,7 +1118,7 @@ export class UIManager {
 
       if (!this.game.hasStarted) return;
 
-      if (key >= '1' && key <= '6') {
+      if (/^[1-9]$/.test(key)) {
         const towerKeys = Object.keys(TOWER_TYPES);
         const idx = parseInt(key) - 1;
         if (towerKeys[idx]) {
@@ -1091,16 +1128,30 @@ export class UIManager {
         e.preventDefault();
         btnPause.click();
       } else if (key === 'Q') {
-        this.game.triggerSuperweapon('orbital');
+        this.useSuperweapon('orbital');
       } else if (key === 'W') {
-        this.game.triggerSuperweapon('stasis');
+        this.useSuperweapon('stasis');
       } else if (key === 'E') {
-        this.game.triggerSuperweapon('overdrive');
+        this.useSuperweapon('overdrive');
       } else if (key === 'U') {
         this.btnUpgrade.click();
       } else if (key === 'S') {
         this.btnSell.click();
       }
     });
+  }
+
+  useSuperweapon(id) {
+    this.game.triggerSuperweapon(id);
+    if (this.game.activeAbilityMode === 'orbital') {
+      this.cancelPlacement();
+    }
+    this.updateHUD();
+  }
+
+  syncPauseButton() {
+    if (!this.btnPause) return;
+    this.btnPause.classList.toggle('paused', this.game.isPaused);
+    this.btnPause.textContent = this.game.isPaused ? '▶' : '⏸';
   }
 }

@@ -58,7 +58,7 @@ export const DIFFICULTY_MODES = {
     speedMult: 1.10,
     bountyMult: 0.80,
     scoreMult: 2.8,
-    startingCredits: 180,
+    startingCredits: 230,
     lives: 12,
     waveScale: 0.22,
     desc: '+50% Enemy HP, +10% Speed, 12 Core HP. Requires max tier towers, choke points, and timely superweapons.'
@@ -258,6 +258,39 @@ export const TOWER_TYPES = {
         desc: '+50% Atk Speed, +25% Damage Aura, 50 ⚡ per wave'
       }
     ]
+  },
+  ion: {
+    id: 'ion',
+    name: 'Ion Disruptor',
+    tagline: 'Shield-shattering area pulse',
+    icon: '🌀',
+    cost: 140,
+    range: 125,
+    damage: 26,
+    fireRate: 0.9,
+    shieldMult: 3,
+    pulseSlow: 0.2,
+    color: '#5e7bff',
+    description: 'Ion pulses strike every hostile in range, deal 3x damage to shields and briefly slow.',
+    upgrades: [
+      {
+        cost: 110,
+        tierName: 'Flux Resonator',
+        damageDelta: 20,
+        rangeDelta: 15,
+        shieldMult: 4,
+        desc: '+20 Damage, 4x vs Shields, +15 Range'
+      },
+      {
+        cost: 210,
+        tierName: 'Null Field Array',
+        damageDelta: 40,
+        rateDelta: 0.3,
+        rangeDelta: 15,
+        armorBreak: true,
+        desc: '+40 Damage, +0.3 Rate, Pulses halve enemy armor for 3s'
+      }
+    ]
   }
 };
 
@@ -327,13 +360,27 @@ export const ENEMY_TYPES = {
     size: 19,
     icon: '🔮'
   },
+  carrier: {
+    type: 'carrier',
+    name: 'Hive Carrier',
+    hp: 320,
+    speed: 0.85,
+    armor: 6,
+    shield: 0,
+    bounty: 10,
+    score: 110,
+    color: '#f15bb5',
+    size: 20,
+    icon: '🐝',
+    spawnsOnDeath: { type: 'scout', count: 4 }
+  },
   titan: {
     type: 'titan',
     name: 'Titan Dreadnought',
-    hp: 1200,
+    hp: 900,
     speed: 0.52,
     armor: 20,
-    shield: 450,
+    shield: 350,
     bounty: 120,
     score: 1000,
     color: '#ef476f',
@@ -341,6 +388,45 @@ export const ENEMY_TYPES = {
     isBoss: true,
     icon: '☠️'
   }
+};
+
+// Economy & pacing tuning knobs
+export const ECONOMY = {
+  waveRewardBase: 50,
+  waveRewardPerWave: 4,
+  bountyGrowthPerWave: 0.01,
+  lateRampStartWave: 10,
+  lateRampQuad: 0.1,
+  extraLaneCredits: 80,
+  earlyCallBase: 10,
+  earlyCallPerSecond: 2,
+  waveBreak: 8
+};
+
+// Onboarding waves: [enemyType, count, spawnDelay]
+export const SCRIPTED_WAVES = {
+  1: [['scout', 6, 1.3]],
+  2: [['scout', 8, 1.1], ['raider', 2, 1.4]],
+  3: [['raider', 5, 1.2], ['scout', 4, 0.9]],
+  4: [['speeder', 6, 0.9], ['raider', 3, 1.2]],
+  6: [['raider', 6, 1.0], ['juggernaut', 2, 1.8], ['scout', 6, 0.7]]
+};
+
+// Themed wave archetype per wave number (boss waves every 5th wave are separate)
+export const WAVE_THEMES = {
+  7: 'swarm', 8: 'aegis', 9: 'hive',
+  11: 'armored', 12: 'blitz', 13: 'aegis', 14: 'hive',
+  16: 'assault', 17: 'swarm', 18: 'armored', 19: 'aegis',
+  21: 'hive', 22: 'blitz', 23: 'armored', 24: 'assault'
+};
+
+export const WAVE_ARCHETYPES = {
+  assault: { label: 'Combined Assault', countMult: 1.0, delay: 0.95, weights: { raider: 35, scout: 20, speeder: 20, juggernaut: 15, shielded: 10 } },
+  swarm: { label: 'Drone Swarm', countMult: 1.7, delay: 0.5, weights: { scout: 60, speeder: 30, raider: 10 } },
+  armored: { label: 'Armored Column', countMult: 0.7, delay: 1.3, weights: { juggernaut: 50, raider: 35, shielded: 15 } },
+  blitz: { label: 'Speed Blitz', countMult: 1.2, delay: 0.6, weights: { speeder: 60, scout: 20, raider: 20 } },
+  aegis: { label: 'Aegis Phalanx', countMult: 0.75, delay: 1.2, weights: { shielded: 50, raider: 30, speeder: 20 } },
+  hive: { label: 'Hive Incursion', countMult: 0.7, delay: 1.1, weights: { carrier: 50, raider: 25, speeder: 25 } }
 };
 
 export const SUPERWEAPONS = {

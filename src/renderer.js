@@ -1,6 +1,6 @@
 // Canvas 2D Cyber-Aesthetic Renderer
 
-import { CELL_SIZE, CANVAS_WIDTH, CANVAS_HEIGHT, GRID_COLS, GRID_ROWS } from './constants.js';
+import { CELL_SIZE, CANVAS_WIDTH, CANVAS_HEIGHT, GRID_COLS, GRID_ROWS, SUPERWEAPONS } from './constants.js';
 
 export class Renderer {
   constructor(canvas, game) {
@@ -321,7 +321,7 @@ export class Renderer {
 
     ctx.save();
     if (ability === 'orbital') {
-      const radius = 130;
+      const radius = SUPERWEAPONS.orbital.radius;
       ctx.strokeStyle = '#ff007f';
       ctx.fillStyle = 'rgba(255, 0, 127, 0.18)';
       ctx.lineWidth = 2.5;

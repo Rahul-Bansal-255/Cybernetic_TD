@@ -1,6 +1,9 @@
 // Main Game State and Simulation Engine
 
-import { CELL_SIZE, GRID_COLS, GRID_ROWS, TOWER_TYPES, SUPERWEAPONS, DIFFICULTY_MODES, CANVAS_WIDTH, CANVAS_HEIGHT } from './constants.js';
+import {
+  GRID_COLS, GRID_ROWS, TOWER_TYPES, SUPERWEAPONS, DIFFICULTY_MODES, CANVAS_WIDTH, CANVAS_HEIGHT,
+  ECONOMY, SCRIPTED_WAVES, WAVE_THEMES, WAVE_ARCHETYPES
+} from './constants.js';
 import { MAPS } from './maps.js';
 import { Tower, Enemy } from './entities.js';
 import { ParticleSystem } from './particles.js';
@@ -19,6 +22,8 @@ export class GameEngine {
     this.enemies = [];
     this.projectiles = [];
     this.burnZones = [];
+    this.pendingSpawns = [];
+    this.pendingStrikes = [];
 
     // Player Resources
     this.maxLives = this.difficulty.lives;
@@ -34,6 +39,7 @@ export class GameEngine {
     this.spawnTimer = 0;
     this.waveDelayTimer = 10; // auto-start countdown
     this.autoStartWaves = true;
+    this.waveQueueCache = {};
 
     // Simulation Speed & Flow
     this.speed = 1;
@@ -111,16 +117,19 @@ export class GameEngine {
     this.enemies = [];
     this.projectiles = [];
     this.burnZones = [];
+    this.pendingSpawns = [];
+    this.pendingStrikes = [];
     this.particles.clear();
 
     this.maxLives = this.difficulty.lives;
     this.lives = this.maxLives;
-    this.credits = this.difficulty.startingCredits;
+    this.credits = this.getStartingCredits();
     this.score = 0;
     this.currentWave = 0;
     this.waveState = 'standby';
     this.spawnQueue = [];
-    this.waveDelayTimer = 10;
+    this.waveQueueCache = {};
+    this.waveDelayTimer = 15;
 
     this.isGameOver = false;
     this.isVictory = false;
@@ -137,13 +146,18 @@ export class GameEngine {
     this.stats = {
       enemiesKilled: 0,
       totalDamageDealt: 0,
-      creditsEarned: this.difficulty.startingCredits,
+      creditsEarned: this.credits,
       towersBuilt: 0,
       bossesDefeated: 0
     };
 
     if (this.onStateChange) this.onStateChange();
     if (this.onWaveChange) this.onWaveChange();
+  }
+
+  // Multi-lane sectors grant extra starting supply to cover every breach
+  getStartingCredits(map = this.currentMap) {
+    return this.difficulty.startingCredits + (map.paths.length - 1) * ECONOMY.extraLaneCredits;
   }
 
   update(dt) {
@@ -165,6 +179,16 @@ export class GameEngine {
     // Overdrive active duration
     if (this.overdriveTimer > 0) {
       this.overdriveTimer = Math.max(0, this.overdriveTimer - effectiveDt);
+    }
+
+    // Orbital strikes in flight
+    if (this.pendingStrikes.length > 0) {
+      this.pendingStrikes = this.pendingStrikes.filter(s => {
+        s.timer -= effectiveDt;
+        if (s.timer > 0) return true;
+        this.resolveOrbitalStrike(s.x, s.y);
+        return false;
+      });
     }
 
     // Reset temporary buffs on towers before recalculation
@@ -198,6 +222,12 @@ export class GameEngine {
       return !e.isDead;
     });
 
+    // Add enemies spawned mid-frame (carrier splits, boss drones)
+    if (this.pendingSpawns.length > 0) {
+      this.enemies.push(...this.pendingSpawns);
+      this.pendingSpawns = [];
+    }
+
     // Update Wave Spawner logic
     this.updateWaveLogic(effectiveDt);
 
@@ -219,20 +249,47 @@ export class GameEngine {
       }
     } else if (this.waveState === 'spawning') {
       this.spawnTimer -= dt;
-      if (this.spawnTimer <= 0 && this.spawnQueue.length > 0) {
+      while (this.spawnTimer <= 0 && this.spawnQueue.length > 0) {
         const nextSpawn = this.spawnQueue.shift();
-        this.spawnEnemy(nextSpawn.type, nextSpawn.pathIndex);
-        this.spawnTimer = nextSpawn.delay;
+        this.spawnEnemy(nextSpawn.type, nextSpawn.pathIndex, nextSpawn.hpScale);
+        this.spawnTimer += nextSpawn.delay;
       }
 
       if (this.spawnQueue.length === 0) {
         this.waveState = 'active';
       }
     } else if (this.waveState === 'active') {
-      if (this.enemies.length === 0 && this.spawnQueue.length === 0) {
+      if (this.enemies.length === 0 && this.spawnQueue.length === 0 && this.pendingSpawns.length === 0) {
         this.onWaveCompleted();
       }
     }
+  }
+
+  getWaveQueue(wave) {
+    if (!this.waveQueueCache[wave]) {
+      this.waveQueueCache[wave] = this.generateWaveQueue(wave);
+    }
+    return this.waveQueueCache[wave];
+  }
+
+  // Upcoming wave composition as { typeKey: count } for the wave radar preview
+  getWaveComposition(wave) {
+    const counts = {};
+    if (wave < 1 || wave > this.maxWaves) return counts;
+    this.getWaveQueue(wave).forEach(s => {
+      counts[s.type] = (counts[s.type] || 0) + 1;
+    });
+    return counts;
+  }
+
+  getWaveLabel(wave) {
+    if (wave % 5 === 0) return 'Titan Assault';
+    if (SCRIPTED_WAVES[wave]) return 'Recon Probe';
+    return WAVE_ARCHETYPES[WAVE_THEMES[wave] || 'assault'].label;
+  }
+
+  getEarlyCallBonus() {
+    return Math.round(ECONOMY.earlyCallBase + Math.max(0, this.waveDelayTimer) * ECONOMY.earlyCallPerSecond);
   }
 
   startNextWave() {
@@ -241,7 +298,7 @@ export class GameEngine {
     this.currentWave++;
     this.waveState = 'spawning';
     this.spawnTimer = 0.5;
-    this.spawnQueue = this.generateWaveQueue(this.currentWave);
+    this.spawnQueue = this.getWaveQueue(this.currentWave).slice();
 
     // Audio cue
     const isBossWave = this.currentWave % 5 === 0;
@@ -256,7 +313,7 @@ export class GameEngine {
 
   callWaveEarly() {
     if (this.waveState === 'standby' && this.currentWave < this.maxWaves) {
-      const bonus = Math.round(10 + this.waveDelayTimer * 1);
+      const bonus = this.getEarlyCallBonus();
       this.credits += bonus;
       this.stats.creditsEarned += bonus;
       this.particles.addText(CANVAS_WIDTH / 2, 80, `EARLY CALL BONUS: +${bonus} ⚡`, '#ffd166', 16, true);
@@ -267,10 +324,9 @@ export class GameEngine {
 
   onWaveCompleted() {
     this.waveState = 'standby';
-    this.waveDelayTimer = 8; // countdown to next wave
+    this.waveDelayTimer = ECONOMY.waveBreak; // countdown to next wave
 
-    // Rebalanced wave completion reward
-    const waveReward = Math.round(35 + this.currentWave * 5);
+    const waveReward = Math.round(ECONOMY.waveRewardBase + this.currentWave * ECONOMY.waveRewardPerWave);
     this.credits += waveReward;
     this.stats.creditsEarned += waveReward;
     const waveScore = Math.round(200 * this.currentWave * (this.difficulty?.scoreMult ?? 1));
@@ -278,19 +334,21 @@ export class GameEngine {
 
     // Beacon tower bonus credits
     this.towers.forEach(t => {
-      if (t.proto.isSupport && t.proto.bonusCreditsWave) {
-        this.credits += t.proto.bonusCreditsWave;
-        this.stats.creditsEarned += t.proto.bonusCreditsWave;
-        this.particles.addText(t.x, t.y - 20, `+${t.proto.bonusCreditsWave} ⚡ (RELAY)`, '#00ff87', 12);
+      if (t.proto.isSupport && t.bonusCreditsWave) {
+        t.hasFired = true;
+        this.credits += t.bonusCreditsWave;
+        this.stats.creditsEarned += t.bonusCreditsWave;
+        this.particles.addText(t.x, t.y - 20, `+${t.bonusCreditsWave} ⚡ (RELAY)`, '#00ff87', 12);
       }
     });
 
-    this.particles.addText(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40, `WAVE ${this.currentWave} SECURED!`, '#00f2fe', 22, true);
-    this.audio.victory();
+    this.particles.addText(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 40, `WAVE ${this.currentWave} SECURED! +${waveReward} ⚡`, '#00f2fe', 22, true);
 
-    // Check Sector Victory (all 25 waves cleared!)
+    // Check Sector Victory (all waves cleared!)
     if (this.currentWave >= this.maxWaves) {
       this.triggerVictory();
+    } else {
+      this.audio.victory();
     }
 
     if (this.onWaveChange) this.onWaveChange();
@@ -298,63 +356,64 @@ export class GameEngine {
 
   generateWaveQueue(wave) {
     const queue = [];
-    const paths = this.currentMap.paths;
-    const isBossWave = wave % 5 === 0;
-
-    if (isBossWave) {
-      // Boss wave composition
-      const countRaiders = 2 + Math.floor(wave / 4);
-      for (let i = 0; i < countRaiders; i++) {
-        queue.push({ type: 'raider', pathIndex: i % paths.length, delay: 1.0 });
+    const lanes = this.currentMap.paths.length;
+    let lane = 0;
+    const add = (type, count, delay, hpScale = 1) => {
+      for (let i = 0; i < count; i++) {
+        queue.push({ type, pathIndex: lane++ % lanes, delay, hpScale });
       }
+    };
 
-      // Colossal Titan Boss
-      queue.push({ type: 'titan', pathIndex: 0, delay: 2.0 });
-
-      for (let i = 0; i < 4; i++) {
-        queue.push({ type: 'speeder', pathIndex: i % paths.length, delay: 1.0 });
-      }
-    } else {
-      // Regular wave composition
-      if (wave === 1) {
-        for (let i = 0; i < 5; i++) queue.push({ type: 'scout', pathIndex: 0, delay: 1.4 });
-      } else if (wave === 2) {
-        for (let i = 0; i < 7; i++) queue.push({ type: 'scout', pathIndex: i % paths.length, delay: 1.2 });
-        for (let i = 0; i < 2; i++) queue.push({ type: 'raider', pathIndex: i % paths.length, delay: 1.5 });
-      } else if (wave === 3) {
-        for (let i = 0; i < 6; i++) queue.push({ type: 'raider', pathIndex: i % paths.length, delay: 1.2 });
-        for (let i = 0; i < 1; i++) queue.push({ type: 'juggernaut', pathIndex: 0, delay: 2.0 });
-      } else if (wave === 4) {
-        for (let i = 0; i < 8; i++) queue.push({ type: 'speeder', pathIndex: i % paths.length, delay: 1.0 });
-      } else {
-        // High wave dynamic composition
-        const totalUnits = 8 + wave;
-        for (let i = 0; i < totalUnits; i++) {
-          let type = 'scout';
-          const r = Math.random();
-          if (r < 0.20) type = 'shielded';
-          else if (r < 0.40) type = 'juggernaut';
-          else if (r < 0.65) type = 'raider';
-          else if (r < 0.85) type = 'speeder';
-
-          queue.push({
-            type,
-            pathIndex: i % paths.length,
-            delay: 0.8 + Math.random() * 0.4
-          });
-        }
-      }
+    // Boss waves: Titan Dreadnoughts with escorts that grow every cycle
+    if (wave % 5 === 0) {
+      const tier = wave / 5;
+      add('raider', 2 + tier, 0.9);
+      if (tier >= 2) add('shielded', tier - 1, 1.3);
+      add('titan', wave >= 20 ? 2 : 1, 3.0, Math.min(1, 0.4 + tier * 0.15));
+      add('speeder', 2 + tier, 0.7);
+      if (tier >= 3) add('carrier', tier - 2, 1.2);
+      return queue;
     }
 
+    // Scripted onboarding waves introduce one threat at a time
+    const scripted = SCRIPTED_WAVES[wave];
+    if (scripted) {
+      scripted.forEach(([type, count, delay]) => add(type, count, delay));
+      return queue;
+    }
+
+    // Themed waves: weighted unit rolls from the archetype pool
+    const arch = WAVE_ARCHETYPES[WAVE_THEMES[wave] || 'assault'];
+    const total = Math.round((8 + wave) * arch.countMult);
+    const pool = Object.entries(arch.weights);
+    const weightSum = pool.reduce((s, [, w]) => s + w, 0);
+    for (let i = 0; i < total; i++) {
+      let r = Math.random() * weightSum;
+      let type = pool[0][0];
+      for (const [key, w] of pool) {
+        r -= w;
+        if (r <= 0) { type = key; break; }
+      }
+      add(type, 1, arch.delay * (0.85 + Math.random() * 0.3));
+    }
     return queue;
   }
 
-  spawnEnemy(typeKey, pathIndex = 0) {
+  getWaveMultiplier() {
+    const waveScale = this.difficulty?.waveScale ?? 0.16;
+    const n = Math.max(1, this.currentWave) - 1;
+    const late = Math.max(0, this.currentWave - ECONOMY.lateRampStartWave);
+    return 1 + n * waveScale + late * late * ECONOMY.lateRampQuad;
+  }
+
+  getBountyScale() {
+    return 1 + (Math.max(1, this.currentWave) - 1) * ECONOMY.bountyGrowthPerWave;
+  }
+
+  spawnEnemy(typeKey, pathIndex = 0, hpScale = 1) {
     const paths = this.currentMap.paths;
     const path = paths[pathIndex % paths.length];
-    const waveScale = this.difficulty?.waveScale ?? 0.28;
-    const waveMult = 1 + (this.currentWave - 1) * waveScale;
-    const enemy = new Enemy(typeKey, path, waveMult, this.difficulty);
+    const enemy = new Enemy(typeKey, path, this.getWaveMultiplier() * hpScale, this.difficulty, this.getBountyScale());
     this.enemies.push(enemy);
 
     if (enemy.isBoss && this.onBossSpawned) {
@@ -362,11 +421,31 @@ export class GameEngine {
     }
   }
 
+  // Spawn a unit at a parent's position on the same path (carrier splits, boss drones)
+  queueChildSpawn(typeKey, parent, index = 0) {
+    const child = new Enemy(typeKey, parent.path, this.getWaveMultiplier(), this.difficulty, this.getBountyScale());
+    child.bounty = Math.max(1, Math.round(child.bounty * 0.5));
+    child.pathIndex = parent.pathIndex;
+    child.distanceTraveled = Math.max(0, parent.distanceTraveled - index * 6);
+    const jitter = () => (Math.random() - 0.5) * 18;
+    child.x = parent.x + jitter();
+    child.y = parent.y + jitter();
+    this.pendingSpawns.push(child);
+  }
+
   onEnemyKilled(enemy) {
     this.credits += enemy.bounty;
     this.score += enemy.score;
     this.stats.enemiesKilled++;
     this.stats.creditsEarned += enemy.bounty;
+
+    if (enemy.spawnsOnDeath) {
+      const { type, count } = enemy.spawnsOnDeath;
+      for (let i = 0; i < count; i++) {
+        this.queueChildSpawn(type, enemy, i);
+      }
+      this.particles.addText(enemy.x, enemy.y - 26, 'HIVE BREACHED!', enemy.color, 13, true);
+    }
 
     if (enemy.isBoss) {
       this.stats.bossesDefeated++;
@@ -509,8 +588,14 @@ export class GameEngine {
     }
 
     if (id === 'orbital') {
-      // Enter targeting mode
+      // Toggle targeting mode (pressing again cancels)
+      if (this.activeAbilityMode === 'orbital') {
+        this.activeAbilityMode = null;
+        return;
+      }
       this.activeAbilityMode = 'orbital';
+      this.placementMode = false;
+      this.selectedPlacementProto = null;
       this.particles.addText(CANVAS_WIDTH / 2, 60, 'SELECT TARGET AREA FOR ORBITAL BEAM', '#ff007f', 15);
     } else if (id === 'stasis') {
       this.cooldowns.stasis = weapon.cooldown;
@@ -534,16 +619,24 @@ export class GameEngine {
 
     this.audio.orbitalStrike();
     this.particles.addShockwave(targetX, targetY, weapon.radius, '#ff007f', 5, 0.6);
+    this.pendingStrikes.push({ x: targetX, y: targetY, timer: 0.45 });
+  }
 
-    setTimeout(() => {
-      this.enemies.forEach(e => {
-        if (e.isDead || e.reachedEnd) return;
-        const dist = Math.hypot(e.x - targetX, e.y - targetY);
-        if (dist <= weapon.radius) {
-          e.takeDamage(weapon.damage, 'energy', this);
-        }
-      });
-      this.particles.createExplosion(targetX, targetY, '#ff007f', 35, 6, 7);
-    }, 450);
+  // Orbital damage scales with wave strength so the strike stays relevant late-game
+  getOrbitalDamage() {
+    return Math.round(SUPERWEAPONS.orbital.damage * this.getWaveMultiplier());
+  }
+
+  resolveOrbitalStrike(targetX, targetY) {
+    const weapon = SUPERWEAPONS.orbital;
+    const damage = this.getOrbitalDamage();
+    this.enemies.forEach(e => {
+      if (e.isDead || e.reachedEnd) return;
+      const dist = Math.hypot(e.x - targetX, e.y - targetY);
+      if (dist <= weapon.radius) {
+        e.takeDamage(damage, 'energy', this);
+      }
+    });
+    this.particles.createExplosion(targetX, targetY, '#ff007f', 35, 6, 7);
   }
 }

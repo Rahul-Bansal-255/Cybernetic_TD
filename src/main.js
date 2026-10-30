@@ -114,6 +114,19 @@ function bootGame() {
     handleCanvasAction(coords, e.shiftKey);
   });
 
+  // Right-click cancels placement / targeting, then deselects
+  canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (game.placementMode || game.activeAbilityMode) {
+      ui.cancelPlacement();
+      game.activeAbilityMode = null;
+    } else {
+      game.selectedTower = null;
+      ui.closeMobileInspector();
+    }
+    ui.syncInspector();
+  });
+
   // First-Class Touch Events for Mobile & Tablets
   canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();

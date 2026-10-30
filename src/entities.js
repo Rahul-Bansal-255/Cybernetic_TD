@@ -3,7 +3,7 @@
 import { CELL_SIZE, TOWER_TYPES, ENEMY_TYPES } from './constants.js';
 
 export class Enemy {
-  constructor(typeKey, path, waveMultiplier = 1, difficulty = null) {
+  constructor(typeKey, path, waveMultiplier = 1, difficulty = null, bountyScale = 1) {
     const proto = ENEMY_TYPES[typeKey] || ENEMY_TYPES.scout;
     this.type = proto.type;
     this.name = proto.name;
@@ -23,14 +23,15 @@ export class Enemy {
     this.armor = proto.armor;
     this.baseSpeed = proto.speed * speedMult;
     this.speed = this.baseSpeed;
-    // Controlled bounty scaled by difficulty (prevents runaway inflation)
-    this.bounty = Math.max(1, Math.round(proto.bounty * bountyMult));
+    // Bounty scaled by difficulty and a gentle per-wave factor
+    this.bounty = Math.max(1, Math.round(proto.bounty * bountyMult * bountyScale));
     // Score scales with wave progress and difficulty bonus
     this.score = Math.round(proto.score * waveMultiplier * scoreMult);
     this.color = proto.color;
     this.size = proto.size;
     this.isBoss = !!proto.isBoss;
     this.icon = proto.icon;
+    this.spawnsOnDeath = proto.spawnsOnDeath || null;
 
     // Initial position
     this.x = path[0].x;
@@ -46,6 +47,7 @@ export class Enemy {
     this.burnTimer = 0;
     this.burnDps = 0;
     this.stunTimer = 0;
+    this.armorShredTimer = 0;
 
     // Visual rotation
     this.angle = 0;
@@ -58,23 +60,16 @@ export class Enemy {
 
     this.animTime += dt;
 
-    // Process Stun / Freeze
-    if (this.freezeTimer > 0) {
-      this.freezeTimer -= dt;
-      game.particles.createCryoFrost(this.x, this.y);
-      return;
+    if (this.armorShredTimer > 0) {
+      this.armorShredTimer -= dt;
     }
 
-    if (this.stunTimer > 0) {
-      this.stunTimer -= dt;
-      return;
-    }
-
-    // Process Burn
+    // Process Burn (ticks even while frozen or stunned)
     if (this.burnTimer > 0) {
       this.burnTimer -= dt;
       const burnDmg = this.burnDps * dt;
       this.takeDamage(burnDmg, 'burn', game, null, false);
+      if (this.isDead) return;
       if (Math.random() < 0.2) {
         game.particles.createExplosion(this.x, this.y, '#ff6b35', 1, 1, 1.5);
       }
@@ -85,6 +80,21 @@ export class Enemy {
     if (this.slowTimer > 0) {
       this.slowTimer -= dt;
       currentSpeed *= (1 - this.slowFactor);
+      if (this.slowTimer <= 0) {
+        this.slowFactor = 0;
+      }
+    }
+
+    // Process Stun / Freeze
+    if (this.freezeTimer > 0) {
+      this.freezeTimer -= dt;
+      game.particles.createCryoFrost(this.x, this.y);
+      return;
+    }
+
+    if (this.stunTimer > 0) {
+      this.stunTimer -= dt;
+      return;
     }
 
     // Waypoint traversal
@@ -113,38 +123,50 @@ export class Enemy {
       this.y += (dy / dist) * step;
       this.distanceTraveled += step;
     }
+  }
 
-    // Boss Phase check (below 50% HP triggers rage speed and mini drone spawn)
-    if (this.isBoss && !this.bossPhaseTriggered && (this.hp / this.maxHp) <= 0.5) {
-      this.bossPhaseTriggered = true;
-      this.baseSpeed *= 1.25;
-      game.particles.addShockwave(this.x, this.y, 160, '#ef476f', 5, 0.6);
-      game.particles.addText(this.x, this.y - 30, 'ENRAGED!', '#ff0055', 16, true);
-      game.audio.bossAlarm();
+  get effectiveArmor() {
+    return this.armorShredTimer > 0 ? this.armor * 0.5 : this.armor;
+  }
+
+  // Boss Phase (below 50% HP triggers rage speed and an escort drone swarm)
+  triggerBossPhase(game) {
+    this.bossPhaseTriggered = true;
+    this.baseSpeed *= 1.25;
+    game.particles.addShockwave(this.x, this.y, 160, '#ef476f', 5, 0.6);
+    game.particles.addText(this.x, this.y - 30, 'ENRAGED! DRONES LAUNCHED', '#ff0055', 16, true);
+    game.audio.bossAlarm();
+    const droneCount = 3 + Math.floor(game.currentWave / 10);
+    for (let i = 0; i < droneCount; i++) {
+      game.queueChildSpawn('scout', this, i);
     }
   }
 
-  takeDamage(amount, damageType = 'kinetic', game, sourceTower = null, showText = true) {
+  takeDamage(amount, damageType = 'kinetic', game, sourceTower = null, showText = true, shieldMult = 1) {
     if (this.isDead) return;
 
     let finalDamage = amount;
 
     // Armor damage reduction for kinetic damage
-    if (damageType === 'kinetic' && this.armor > 0) {
-      const reduction = Math.min(0.65, this.armor * 0.015);
+    const armor = this.effectiveArmor;
+    if (damageType === 'kinetic' && armor > 0) {
+      const reduction = Math.min(0.65, armor * 0.015);
       finalDamage *= (1 - reduction);
     }
 
-    // Shield absorbs damage first
+    const dealt = finalDamage;
+
+    // Shield absorbs damage first (shieldMult amplifies damage dealt to shields)
     if (this.shield > 0) {
-      if (this.shield >= finalDamage) {
-        this.shield -= finalDamage;
+      const shieldHit = finalDamage * shieldMult;
+      if (this.shield >= shieldHit) {
+        this.shield -= shieldHit;
         if (showText && Math.random() < 0.4) {
-          game.particles.addText(this.x, this.y - 12, `-${Math.round(finalDamage)} (SHLD)`, '#4cc9f0', 11);
+          game.particles.addText(this.x, this.y - 12, `-${Math.round(shieldHit)} (SHLD)`, '#4cc9f0', 11);
         }
         finalDamage = 0;
       } else {
-        finalDamage -= this.shield;
+        finalDamage -= this.shield / shieldMult;
         this.shield = 0;
         game.particles.addShockwave(this.x, this.y, 40, '#4cc9f0', 2, 0.25);
         if (showText) {
@@ -163,7 +185,12 @@ export class Enemy {
     }
 
     if (sourceTower) {
-      sourceTower.totalDamage += Math.round(amount);
+      sourceTower.totalDamage += dealt;
+    }
+    game.stats.totalDamageDealt += dealt;
+
+    if (this.isBoss && !this.bossPhaseTriggered && this.hp > 0 && (this.hp / this.maxHp) <= 0.5) {
+      this.triggerBossPhase(game);
     }
 
     if (this.hp <= 0 && !this.isDead) {
@@ -191,6 +218,10 @@ export class Enemy {
   applyBurn(dps, duration) {
     this.burnDps = Math.max(this.burnDps, dps);
     this.burnTimer = Math.max(this.burnTimer, duration);
+  }
+
+  applyArmorShred(duration) {
+    this.armorShredTimer = Math.max(this.armorShredTimer, duration);
   }
 
   draw(ctx) {
@@ -335,6 +366,36 @@ export class Enemy {
       ctx.beginPath();
       ctx.arc(0, 0, this.size * 0.35, 0, Math.PI * 2);
       ctx.fill();
+    } else if (this.type === 'carrier') {
+      // Hive Carrier: armored pod with orbiting drone bays
+      ctx.fillStyle = '#2a0f24';
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = 2.5;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = this.color;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, this.size, this.size * 0.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = this.color;
+      for (let i = 0; i < 3; i++) {
+        const a = this.animTime * 2 + (i * Math.PI * 2) / 3;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * this.size * 0.45, Math.sin(a) * this.size * 0.3, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Armor shred indicator
+    if (this.armorShredTimer > 0) {
+      ctx.strokeStyle = '#5e7bff';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.arc(0, 0, this.size + 2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
 
     ctx.restore();
@@ -390,6 +451,27 @@ export class Tower {
     this.totalDamage = 0;
     this.totalInvestedCost = this.proto.cost;
     this.targetPriority = 'first'; // 'first', 'last', 'strongest', 'weakest', 'closest'
+    this.hasFired = false;
+
+    // Per-instance combat stats (upgrades modify these, never the shared prototype)
+    this.splashRadius = this.proto.splashRadius || 0;
+    this.slowFactor = this.proto.slowFactor || 0;
+    this.chainCount = this.proto.chainCount || 0;
+    this.stunChance = this.proto.stunChance || 0;
+    this.bossBonus = this.proto.bossBonus || 1;
+    this.critChance = 0;
+    this.beamChains = 0;
+    this.shieldMult = this.proto.shieldMult || 1;
+    this.armorBreak = false;
+    this.burnZoneEnabled = false;
+    this.shredArmor = false;
+    this.beamTargets = [];
+
+    // Support aura stats (Aegis Relay)
+    this.auraSpeed = this.proto.buffSpeed || 0;
+    this.auraRange = this.proto.buffRange || 0;
+    this.auraDamage = 0;
+    this.bonusCreditsWave = this.proto.bonusCreditsWave || 0;
 
     // Beacon / Support Buff Modifiers (reset each frame)
     this.buffSpeed = 0;
@@ -405,6 +487,10 @@ export class Tower {
     return Math.round((this.baseDamage || 0) * (1 + this.buffDamage));
   }
 
+  get beamDps() {
+    return this.effectiveDamage * (1 + this.buffSpeed);
+  }
+
   get effectiveFireRate() {
     if (this.proto.isSupport) return 0;
     return (this.baseFireRate || 0) * (1 + this.buffSpeed);
@@ -416,7 +502,7 @@ export class Tower {
 
   get dps() {
     if (this.proto.isSupport) return 0;
-    if (this.proto.isBeam) return Math.round(this.effectiveDamage);
+    if (this.proto.isBeam) return Math.round(this.beamDps);
     return Math.round(this.effectiveDamage * this.effectiveFireRate);
   }
 
@@ -441,13 +527,21 @@ export class Tower {
     if (next.damageDelta) this.baseDamage += next.damageDelta;
     if (next.rateDelta) this.baseFireRate += next.rateDelta;
     if (next.rangeDelta) this.range += next.rangeDelta;
-    if (next.splashDelta && this.proto.splashRadius) this.proto.splashRadius += next.splashDelta;
-    if (next.slowFactor) this.proto.slowFactor = next.slowFactor;
+    if (next.splashDelta) this.splashRadius += next.splashDelta;
+    if (next.slowFactor) this.slowFactor = next.slowFactor;
+    if (next.chainDelta) this.chainCount += next.chainDelta;
+    if (next.stunChance) this.stunChance = next.stunChance;
+    if (next.bossBonus) this.bossBonus = next.bossBonus;
+    if (next.chains) this.beamChains = next.chains;
+    if (next.shieldMult) this.shieldMult = next.shieldMult;
+    if (next.armorBreak) this.armorBreak = true;
     if (next.burnZone) this.burnZoneEnabled = true;
     if (next.shredArmor) this.shredArmor = true;
     if (next.critChance) this.critChance = next.critChance;
-    if (next.buffSpeed) this.proto.buffSpeed = next.buffSpeed;
-    if (next.bonusCreditsWave) this.proto.bonusCreditsWave = next.bonusCreditsWave;
+    if (next.buffSpeed) this.auraSpeed = next.buffSpeed;
+    if (next.buffRange) this.auraRange = next.buffRange;
+    if (next.buffDamage) this.auraDamage = next.buffDamage;
+    if (next.bonusCreditsWave) this.bonusCreditsWave = next.bonusCreditsWave;
 
     game.audio.upgrade();
     game.particles.addShockwave(this.x, this.y, 80, this.proto.color, 4, 0.4);
@@ -455,8 +549,10 @@ export class Tower {
     return true;
   }
 
+  // Full refund until the tower has seen combat, 70% afterwards
   getRefund() {
-    return Math.round(this.totalInvestedCost * 0.7);
+    const rate = this.hasFired ? 0.7 : 1.0;
+    return Math.round(this.totalInvestedCost * rate);
   }
 
   update(dt, game) {
@@ -482,10 +578,23 @@ export class Tower {
 
     // Continuous Beam weapon (Cryo Emitter)
     if (this.proto.isBeam) {
+      this.beamTargets = [];
       if (this.target) {
-        const dps = this.effectiveDamage;
-        this.target.takeDamage(dps * dt, 'cold', game, this, false);
-        this.target.applySlow(this.proto.slowFactor, 0.4);
+        this.hasFired = true;
+        const targets = [this.target];
+        // Absolute Zero: beam arcs to nearby hostiles
+        for (let c = 0; c < this.beamChains; c++) {
+          const last = targets[targets.length - 1];
+          const next = nearestEnemy(game.enemies, last.x, last.y, 110, targets);
+          if (!next) break;
+          targets.push(next);
+        }
+        const dps = this.beamDps;
+        targets.forEach((t, i) => {
+          t.takeDamage(dps * dt * (i === 0 ? 1 : 0.6), 'cold', game, this, false);
+          t.applySlow(this.slowFactor, 0.4);
+        });
+        this.beamTargets = targets;
         game.particles.createLaserHit(this.target.x, this.target.y, this.proto.color, 1);
         if (Math.random() < 0.15) {
           game.audio.cryo();
@@ -494,16 +603,25 @@ export class Tower {
       return;
     }
 
-    // Discrete Projectile Cooldowns
-    if (this.fireCooldown > 0) {
-      this.fireCooldown -= dt;
+    // Discrete weapon cooldowns (multiple shots per tick keep high game speeds accurate)
+    this.fireCooldown -= dt;
+    if (!this.target) {
+      if (this.fireCooldown < 0) this.fireCooldown = 0;
+      return;
     }
 
-    if (this.fireCooldown <= 0 && this.target) {
+    let shots = 0;
+    while (this.fireCooldown <= 0 && this.target && shots < 6) {
       this.fire(this.target, game);
-      this.fireCooldown = 1 / this.effectiveFireRate;
+      this.hasFired = true;
+      this.fireCooldown += 1 / this.effectiveFireRate;
       this.recoil = 6;
+      shots++;
+      if (this.target.isDead) {
+        this.target = this.findTarget(game.enemies);
+      }
     }
+    if (this.fireCooldown < 0) this.fireCooldown = 0;
   }
 
   radiateSupportBuffs(game) {
@@ -512,11 +630,9 @@ export class Tower {
       if (t !== this && !t.proto.isSupport) {
         const d2 = (t.x - this.x) ** 2 + (t.y - this.y) ** 2;
         if (d2 <= rangeSq) {
-          t.buffSpeed = Math.max(t.buffSpeed, this.proto.buffSpeed || 0.25);
-          t.buffRange = Math.max(t.buffRange, this.proto.buffRange || 0.15);
-          if (this.tier === 3) {
-            t.buffDamage = Math.max(t.buffDamage, 0.25);
-          }
+          t.buffSpeed = Math.max(t.buffSpeed, this.auraSpeed);
+          t.buffRange = Math.max(t.buffRange, this.auraRange);
+          t.buffDamage = Math.max(t.buffDamage, this.auraDamage);
         }
       }
     });
@@ -563,7 +679,7 @@ export class Tower {
       game.audio.plasmaShot();
       game.projectiles.push(new Projectile(
         this.x, this.y, target, 'mortar', damage, 320, this.proto.color, this, {
-          splashRadius: this.proto.splashRadius,
+          splashRadius: this.splashRadius,
           burnZone: this.burnZoneEnabled
         }
       ));
@@ -573,27 +689,26 @@ export class Tower {
     } else if (this.type === 'railgun') {
       game.audio.railgun();
       this.fireRailgun(target, game, damage);
+    } else if (this.type === 'ion') {
+      game.audio.ionPulse();
+      this.fireIonPulse(game, damage);
     }
   }
 
   fireTesla(primaryTarget, game, damage) {
-    const chainLimit = (this.proto.chainCount || 3) + (this.tier > 1 ? 2 : 0);
+    const chainLimit = Math.max(1, this.chainCount);
     const chained = [primaryTarget];
     let current = primaryTarget;
 
     primaryTarget.takeDamage(damage, 'energy', game, this);
-    if (Math.random() < (this.proto.stunChance || 0.25)) {
+    if (Math.random() < this.stunChance) {
       primaryTarget.applyStun(0.65);
       game.particles.addText(primaryTarget.x, primaryTarget.y - 15, 'STUNNED!', '#c77dff', 12);
     }
 
     for (let c = 1; c < chainLimit; c++) {
-      const nextCandidates = game.enemies.filter(e => 
-        !e.isDead && !e.reachedEnd && !chained.includes(e) &&
-        Math.hypot(e.x - current.x, e.y - current.y) < 130
-      );
-      if (nextCandidates.length === 0) break;
-      const next = nextCandidates[0];
+      const next = nearestEnemy(game.enemies, current.x, current.y, 130, chained);
+      if (!next) break;
       const chainDmg = damage * Math.pow(0.8, c);
       next.takeDamage(chainDmg, 'energy', game, this);
       chained.push(next);
@@ -608,14 +723,11 @@ export class Tower {
     let finalDmg = damage;
     let isCrit = false;
     if (this.critChance && Math.random() < this.critChance) {
-      finalDmg *= 3;
+      finalDmg *= 2.5;
       isCrit = true;
     }
-    if (target.isBoss) {
-      finalDmg *= (this.proto.bossBonus || 1.5);
-    }
 
-    // Pierce all enemies intersected by the ray
+    // Pierce all enemies intersected by the ray (armor-piercing lance)
     const angle = this.rotation;
     const rayLength = this.effectiveRange;
     const endX = this.x + Math.cos(angle) * rayLength;
@@ -625,12 +737,27 @@ export class Tower {
       if (e.isDead || e.reachedEnd) return;
       const d = distToSegment({ x: e.x, y: e.y }, { x: this.x, y: this.y }, { x: endX, y: endY });
       if (d <= e.size + 10) {
-        e.takeDamage(finalDmg, isCrit ? 'crit' : 'kinetic', game, this);
+        const hitDmg = e.isBoss ? finalDmg * this.bossBonus : finalDmg;
+        e.takeDamage(hitDmg, isCrit ? 'crit' : 'energy', game, this);
         game.particles.createLaserHit(e.x, e.y, '#ff007f', 6);
       }
     });
 
     game.projectiles.push(new RailgunBeam(this.x, this.y, endX, endY, '#ff007f', isCrit));
+  }
+
+  fireIonPulse(game, damage) {
+    const range = this.effectiveRange;
+    const rangeSq = range * range;
+    game.enemies.forEach(e => {
+      if (e.isDead || e.reachedEnd) return;
+      const d2 = (e.x - this.x) ** 2 + (e.y - this.y) ** 2;
+      if (d2 > rangeSq) return;
+      e.applySlow(this.proto.pulseSlow || 0.2, 0.8);
+      if (this.armorBreak) e.applyArmorShred(3);
+      e.takeDamage(damage, 'energy', game, this, true, this.shieldMult);
+    });
+    game.projectiles.push(new IonPulse(this.x, this.y, range, this.proto.color));
   }
 
   draw(ctx) {
@@ -753,12 +880,31 @@ export class Tower {
       ctx.strokeStyle = '#00ff87';
       ctx.lineWidth = 2;
       ctx.strokeRect(-10, -10, 20, 20);
+    } else if (this.type === 'ion') {
+      // Twin resonance rings around a charged core
+      const charge = this.effectiveFireRate > 0
+        ? 1 - Math.min(1, this.fireCooldown * this.effectiveFireRate)
+        : 0;
+      ctx.strokeStyle = this.proto.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, 11, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 14, 5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = this.proto.color;
+      ctx.shadowBlur = 6 + charge * 12;
+      ctx.shadowColor = this.proto.color;
+      ctx.beginPath();
+      ctx.arc(0, 0, 3 + charge * 3, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     ctx.restore();
 
-    // Draw Cryo Beam to target
-    if (this.proto.isBeam && this.target) {
+    // Draw Cryo Beam to target (and chained targets)
+    if (this.proto.isBeam && this.beamTargets.length > 0) {
       ctx.save();
       ctx.strokeStyle = 'rgba(0, 229, 255, 0.85)';
       ctx.lineWidth = 3 + Math.sin(Date.now() * 0.02);
@@ -766,7 +912,9 @@ export class Tower {
       ctx.shadowColor = '#00e5ff';
       ctx.beginPath();
       ctx.moveTo(this.x, this.y);
-      ctx.lineTo(this.target.x, this.target.y);
+      for (const t of this.beamTargets) {
+        ctx.lineTo(t.x, t.y);
+      }
       ctx.stroke();
       ctx.restore();
     }
@@ -878,7 +1026,7 @@ export class Projectile {
     });
 
     if (this.extra.burnZone) {
-      game.burnZones.push(new BurnZone(this.targetX, this.targetY, splash * 0.8, 45, 4.0, this.sourceTower));
+      game.burnZones.push(new BurnZone(this.targetX, this.targetY, splash * 0.8, Math.round(this.damage * 0.3), 4.0, this.sourceTower));
     }
   }
 
@@ -1035,6 +1183,56 @@ export class BurnZone {
     ctx.stroke();
     ctx.restore();
   }
+}
+
+export class IonPulse {
+  constructor(x, y, radius, color) {
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.color = color;
+    this.life = 0.35;
+    this.maxLife = 0.35;
+    this.isDead = false;
+  }
+
+  update(dt) {
+    this.life -= dt;
+    if (this.life <= 0) {
+      this.isDead = true;
+    }
+    return !this.isDead;
+  }
+
+  draw(ctx) {
+    if (this.isDead) return;
+    const progress = 1 - this.life / this.maxLife;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - progress);
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, Math.max(1, this.radius * progress), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// Nearest living enemy to (x, y) within maxDist, skipping excluded entries
+function nearestEnemy(enemies, x, y, maxDist, exclude) {
+  let best = null;
+  let bestD2 = maxDist * maxDist;
+  for (const e of enemies) {
+    if (e.isDead || e.reachedEnd || exclude.includes(e)) continue;
+    const d2 = (e.x - x) ** 2 + (e.y - y) ** 2;
+    if (d2 < bestD2) {
+      bestD2 = d2;
+      best = e;
+    }
+  }
+  return best;
 }
 
 // Distance from point to line segment

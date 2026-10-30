@@ -18,8 +18,9 @@ An adrenaline-fueled, sci-fi cybernetic tower defense strategy game built entire
 - **Dynamic Cyberpunk Aesthetics**: Sleek neon aesthetic with particle shockwaves, real-time laser beams, freeze mist, lightning chains, floating combat text, and reactive screen shake.
 - **7 Tactical Combat Sectors**: Navigate unique lane layouts, convergence choke points, hairpin bends, and environmental obstacles across 7 distinct sectors.
 - **4 Calibrated Threat Levels**: Select between **Cadet**, **Veteran**, **Elite**, and **Apocalypse** to tailor enemy vitality, movement velocities, credit bounties, and core integrity.
-- **6 Specialized Defensive Turrets**: Build and customize Pulse Blasters, Plasma Mortars, Cryo Emitters, Tesla Pylons, Void Railguns, and Aegis Support Relays.
-- **Multi-Tier Upgrade Progression**: Every turret features unique 3-tier upgrade paths with specialized mechanics (armor penetration, freezing chains, critical strikes, and economic bonuses).
+- **7 Specialized Defensive Turrets**: Build and customize Pulse Blasters, Plasma Mortars, Cryo Emitters, Tesla Pylons, Void Railguns, Aegis Support Relays, and Ion Disruptors.
+- **Multi-Tier Upgrade Progression**: Every turret features unique 3-tier upgrade paths with specialized mechanics (armor penetration, chaining beams, critical strikes, shield shredding, and economic bonuses).
+- **Themed Wave Radar**: Preview the exact composition of the next wave (Drone Swarms, Armored Columns, Aegis Phalanxes, Hive Incursions, Titan Assaults) and adapt your defenses before it hits.
 - **3 Commander Superweapons**: Call in real-time game-changers including the **Orbital Beam Strike**, **Cryo Stasis Field**, and **Reactor Overdrive**.
 - **Tactical Combat Codex**: Built-in interactive database documenting all turret archetypes, enemy vulnerabilities, threat level modifiers, and combat tips.
 - **Procedural Synthesizer Audio**: Powered by the Web Audio API with punchy synth SFX, laser pulses, explosive thuds, and dynamic background synthwave music.
@@ -74,13 +75,15 @@ Study hostile drone archetypes, kinetic shield ratings, armor plating values, an
 
 | Sector | Difficulty | Lanes | Obstacles | Tactical Description |
 | :--- | :---: | :---: | :---: | :--- |
-| **Sector Alpha: Neon Ridge** | Standard | 1 | 8 | Winding cyber-highway with double hairpin turns and central choke bastion. |
-| **Sector Beta: Nexus Matrix** | Advanced | 2 | 6 | Dual-convergence assault lanes converging at the central reactor plaza. |
-| **Sector Gamma: Magma Crucible** | Expert | 1 | 7 | High-speed gauntlet bordered by volcanic rifts demanding razor-sharp positioning. |
-| **Sector Delta: Vortex Abyss** | Tactical | 2 | 8 | Spiral vortex layout pulling hostiles around the perimeter before plunging inward. |
-| **Sector Epsilon: Glitch Sanctum** | Elite | 1 | 9 | Zig-zagging electromagnetic corridor flanked by unstable quantum nodes. |
-| **Sector Zeta: Circuit Core** | Master | 2 | 6 | Microchip architecture with dual parallel assault highways. |
-| **Sector Omega: Void Singularity** | Nightmare | 3 | 10 | Triple-breach frontline converge on a hyper-dense central reactor nexus. |
+| **Sector Alpha: Neon Ridge** | Standard | 1 | 8 | Winding neon highway with double hairpin curves and a central choke bastion. |
+| **Sector Delta: Orbital Centrifuge** | Advanced | 1 | 8 | Concentric orbital spiral collapsing toward a central reactor core. |
+| **Sector Gamma: Magma Crucible** | Tactical | 1 | 7 | High-speed serpentine gauntlet bordered by volcanic rifts. |
+| **Sector Beta: Nexus Matrix** | Expert | 2 | 6 | Northern and southern breaches converging at the Nexus Plaza. |
+| **Sector Epsilon: Cryo Trench** | Elite | 2 | 6 | Split ice ravines flanking a central high-ground sniper plateau. |
+| **Sector Omega: Singularity Zero** | Master | 2 | 6 | Inverted criss-crossing helices forming dual killboxes. |
+| **Sector Zeta: Hyper-Grid Coliseum** | Nightmare | 3 | 6 | Triple synchronized breach across rapid zig-zag switchbacks. |
+
+Multi-lane sectors grant **+80 ⚡ starting supply per extra lane**. Clearing a sector unlocks the next one in this order via **Next Sector**.
 
 ---
 
@@ -91,7 +94,9 @@ Study hostile drone archetypes, kinetic shield ratings, armor plating values, an
 | **CADET** | 0.75x | 0.90x | 120% | 350 ⚡ | 25 HP | Accessible onboarding; 1 Pulse Blaster easily clears Wave 1. |
 | **VETERAN** | 1.00x | 1.00x | 100% | 260 ⚡ | 20 HP | Standard balanced experience rewarding steady upgrades. |
 | **ELITE** | 1.25x | 1.05x | 90% | 220 ⚡ | 15 HP | Demanding incursions requiring heavy crowd control and beam slows. |
-| **APOCALYPSE** | 1.50x | 1.10x | 80% | 180 ⚡ | 12 HP | Brutal onslaught requiring max-tier synergies and superweapon timing. |
+| **APOCALYPSE** | 1.50x | 1.10x | 80% | 230 ⚡ | 12 HP | Brutal onslaught requiring max-tier synergies and superweapon timing. |
+
+From wave 11 onward hostile vitality ramps up sharply on every threat level. Wave rewards are `50 + 4 × wave` credits, and calling a wave early pays `10 + 2 × seconds remaining`.
 
 ---
 
@@ -103,16 +108,33 @@ Study hostile drone archetypes, kinetic shield ratings, armor plating values, an
 | **Plasma Mortar** | 💥 | 150 ⚡ | Long-Range Artillery | Heavy AoE splash damage (85 dmg, 70px blast radius). |
 | **Cryo Emitter** | ❄️ | 125 ⚡ | Crowd Control | Continuous cryogenic beam dealing 28 DPS and slowing by 40%. |
 | **Tesla Pylon** | ⚡ | 180 ⚡ | Area Chain | High-voltage electric arcs chaining to 3 targets with 25% stun chance. |
-| **Void Railgun** | 🎯 | 260 ⚡ | Anti-Armor Sniper | Piercing hyper-velocity lance (320 dmg, 310 range, 1.75x boss bonus). |
-| **Aegis Relay** | 🌐 | 160 ⚡ | Tactical Support | +25% attack speed aura to adjacent turrets + 25 ⚡ bonus income per wave. |
+| **Void Railgun** | 🎯 | 260 ⚡ | Anti-Armor Sniper | Armor-piercing line lance (320 dmg, 310 range, 1.75x boss bonus). |
+| **Aegis Relay** | 🌐 | 160 ⚡ | Tactical Support | +25% attack speed / +15% range aura to nearby turrets + 25 ⚡ bonus income per wave. |
+| **Ion Disruptor** | 🌀 | 140 ⚡ | Anti-Shield Pulse | Hits every hostile in range (26 dmg), 3x damage to shields, brief slow; T3 halves enemy armor. |
+
+Turrets that have not fired yet are recycled for a **100% refund**; afterwards selling returns 70%.
+
+---
+
+## 👾 Hostiles
+
+| Hostile | Icon | Trait |
+| :--- | :---: | :--- |
+| **Scout Drone** | 🛸 | Fast, fragile swarm unit. |
+| **Cyber Raider** | 🤖 | Light armor all-rounder. |
+| **Iron Juggernaut** | 🛡️ | Heavy armor; resists kinetic rounds. |
+| **Phase Speeder** | ⚡ | Very fast with a light shield. |
+| **Aegis Crusher** | 🔮 | Large energy shield; counter with Ion Disruptors. |
+| **Hive Carrier** | 🐝 | Releases 4 Scout Drones when destroyed. |
+| **Titan Dreadnought** | ☠️ | Boss every 5 waves; enrages at 50% HP and launches escort drones. |
 
 ---
 
 ## 🚀 Commander Superweapons
 
-- **Orbital Beam Strike [Key: Q]** (45s CD): Target any coordinate on the grid to drop a celestial particle beam dealing massive localized devastation.
-- **Cryo Stasis Field [Key: W]** (50s CD): Flash-freezes all active enemies across the entire sector for 4 seconds.
-- **Reactor Overdrive [Key: E]** (40s CD): Supercharges all deployed turrets with +75% fire rate and +25% bonus damage for 8 seconds.
+- **Orbital Beam Strike [Key: Q]** (55s CD): Target any coordinate to drop a beam dealing 600 damage (scaled with wave strength) in a wide radius. Press `Q` again or right-click to cancel targeting.
+- **Cryo Stasis Field [Key: W]** (55s CD): Flash-freezes all active enemies across the entire sector for 3.8 seconds.
+- **Reactor Overdrive [Key: E]** (48s CD): Supercharges all deployed turrets with +100% attack speed for 5 seconds.
 
 ---
 
@@ -120,7 +142,7 @@ Study hostile drone archetypes, kinetic shield ratings, armor plating values, an
 
 | Action | Hotkey / Input |
 | :--- | :--- |
-| **Select Turret [1 - 6]** | Keys `1` through `6` |
+| **Select Turret [1 - 7]** | Keys `1` through `7` |
 | **Multi-Placement** | Hold `Shift` while clicking to place multiple turrets |
 | **Cancel Placement / Deselect** | `Escape` or Right-Click |
 | **Superweapons** | `Q` (Orbital Beam), `W` (Cryo Stasis), `E` (Overdrive) |
